@@ -465,22 +465,29 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .pitch-fm{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.85rem;color:var(--gold);letter-spacing:2px}
 .pitch-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.25rem;color:var(--gold);line-height:1}
 .pitch-rl{font-size:.52rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
-.pitch{background:linear-gradient(180deg,#071507 0%,#0b220b 35%,#0d280d 65%,#071507 100%);display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(6,1fr);gap:2px;padding:8px;aspect-ratio:.68;position:relative}
-.pitch::before{content:'';position:absolute;inset:8px;border:1px solid rgba(255,255,255,.06);border-radius:3px;pointer-events:none}
-.pitch::after{content:'';position:absolute;left:8px;right:8px;top:50%;height:1px;background:rgba(255,255,255,.04);pointer-events:none}
-.ps{display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;padding:3px;transition:all .12s}
+.pitch-wrap{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;overflow:hidden}
+.pitch-hdr{padding:10px 14px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;background:var(--surf2)}
+.pitch-fm{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.85rem;color:var(--gold);letter-spacing:2px}
+.pitch-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.25rem;color:var(--gold);line-height:1}
+.pitch-rl{font-size:.52rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase}
+/* SVG pitch container */
+.pitch-svg-wrap{width:100%;position:relative;background:#0a1e0a}
+.pitch-svg-wrap svg{display:block;width:100%;height:auto}
+/* Player badge overlay grid */
+.pitch-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(6,1fr)}
+.ps{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;transition:all .12s;position:relative;z-index:2}
 .ps.can{cursor:pointer}
-.ps.can:hover{background:rgba(201,162,39,.08)}
-.ps.glow{background:rgba(201,162,39,.14);animation:gpulse .7s ease-in-out infinite}
-@keyframes gpulse{0%,100%{background:rgba(201,162,39,.1)}50%{background:rgba(201,162,39,.26)}}
-.badge{width:34px;height:34px;border-radius:50%;border:2px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.66rem;letter-spacing:.3px;transition:all .12s;flex-shrink:0}
-.badge.e{background:rgba(255,255,255,.04);color:var(--muted);border-color:rgba(255,255,255,.08)}
-.badge.e.can{border-color:rgba(201,162,39,.4);color:rgba(201,162,39,.65);background:rgba(201,162,39,.05)}
-.badge.f{background:rgba(201,162,39,.16);color:var(--gold);border-color:var(--gold)}
-.badge.e.glow{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,.1)}
-.sn{font-size:.41rem;color:var(--muted);margin-top:1px;text-align:center;max-width:42px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.1}
-.sn.fn{color:rgba(240,242,248,.6);font-size:.41rem}
-.sp{font-size:.37rem;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;opacity:.8}
+.ps.can:hover .badge{border-color:rgba(201,162,39,.7);background:rgba(201,162,39,.12)}
+.ps.glow{animation:gpulse .7s ease-in-out infinite}
+@keyframes gpulse{0%,100%{background:rgba(201,162,39,.08)}50%{background:rgba(201,162,39,.2)}}
+.badge{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.72rem;letter-spacing:.3px;transition:all .14s;flex-shrink:0;line-height:1}
+.badge.e{background:rgba(10,20,10,.7);color:rgba(255,255,255,.35);border-color:rgba(255,255,255,.12)}
+.badge.e.can{border-color:rgba(201,162,39,.45);color:rgba(201,162,39,.75);background:rgba(10,20,10,.8)}
+.badge.e.glow{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,.15);box-shadow:0 0 8px rgba(201,162,39,.3)}
+.badge.f{background:rgba(201,162,39,.18);color:var(--gold-hi);border-color:var(--gold);box-shadow:0 0 6px rgba(201,162,39,.2)}
+.sn{font-size:.44rem;color:rgba(255,255,255,.55);margin-top:2px;text-align:center;max-width:44px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;line-height:1.1;font-weight:500}
+.sn.fn{color:rgba(255,255,255,.8);font-size:.44rem;font-weight:600}
+.sp{font-size:.38rem;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;opacity:.75;margin-top:1px;line-height:1}
 
 /* ── SLOT MACHINE SPINNER ── */
 .spin-panel{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:18px}
@@ -1826,33 +1833,102 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
       const slot = fSlots.find(s => s.row === row && s.col === col);
       const filled = slot ? filledMap[slot.id] : null;
       const isEmpty = slot && !filled;
-      // Highlight only if openPlayer's exact position matches this slot
       const isElig = isEmpty && openPlayer && canFill(openPlayer.player.pos, slot.label);
       cells.push({ row, col, slot, filled, isEmpty, isElig });
     }
   }
 
+  // Pitch SVG markings — proper football pitch with stripes, lines, arcs
+  const PitchSVG = () => (
+    <svg viewBox="0 0 300 440" xmlns="http://www.w3.org/2000/svg" style={{display:"block",width:"100%",height:"100%"}}>
+      <defs>
+        {/* Alternating grass stripes */}
+        <pattern id="stripes" x="0" y="0" width="300" height="44" patternUnits="userSpaceOnUse">
+          <rect width="300" height="22" fill="#0b1f0b"/>
+          <rect y="22" width="300" height="22" fill="#0d240d"/>
+        </pattern>
+      </defs>
+
+      {/* Grass base with stripes */}
+      <rect width="300" height="440" fill="url(#stripes)"/>
+
+      {/* Pitch outline */}
+      <rect x="20" y="16" width="260" height="408" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1.5"/>
+
+      {/* Halfway line */}
+      <line x1="20" y1="220" x2="280" y2="220" stroke="rgba(255,255,255,0.13)" strokeWidth="1.2"/>
+
+      {/* Centre circle */}
+      <circle cx="150" cy="220" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      {/* Centre spot */}
+      <circle cx="150" cy="220" r="2.5" fill="rgba(255,255,255,0.2)"/>
+
+      {/* Top penalty area */}
+      <rect x="75" y="16" width="150" height="60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      {/* Top 6-yard box */}
+      <rect x="110" y="16" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+      {/* Top penalty spot */}
+      <circle cx="150" cy="58" r="2" fill="rgba(255,255,255,0.15)"/>
+      {/* Top penalty arc */}
+      <path d="M 110 76 A 40 40 0 0 1 190 76" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.2"/>
+
+      {/* Bottom penalty area */}
+      <rect x="75" y="364" width="150" height="60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      {/* Bottom 6-yard box */}
+      <rect x="110" y="400" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+      {/* Bottom penalty spot */}
+      <circle cx="150" cy="382" r="2" fill="rgba(255,255,255,0.15)"/>
+      {/* Bottom penalty arc */}
+      <path d="M 110 364 A 40 40 0 0 0 190 364" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.2"/>
+
+      {/* Top goal */}
+      <rect x="120" y="8" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+      {/* Bottom goal */}
+      <rect x="120" y="422" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+
+      {/* Corner arcs — top left */}
+      <path d="M 20 28 A 12 12 0 0 1 32 16" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+      {/* Corner arcs — top right */}
+      <path d="M 268 16 A 12 12 0 0 1 280 28" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+      {/* Corner arcs — bottom left */}
+      <path d="M 20 412 A 12 12 0 0 0 32 424" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+      {/* Corner arcs — bottom right */}
+      <path d="M 268 424 A 12 12 0 0 0 280 412" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+    </svg>
+  );
+
   return (
-    <div className="pitch">
-      {cells.map(({ row, col, slot, filled, isEmpty, isElig }, i) => {
-        if (!slot) return <div key={i} style={{ gridRow: row, gridColumn: col }} />;
-        return (
-          <div
-            key={i}
-            className={`ps${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`}
-            style={{ gridRow: row, gridColumn: col }}
-            onClick={isElig ? () => onPlace(slot) : undefined}
-          >
-            <div className={`badge ${filled ? "f" : `e${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`}`}>
-              {filled ? filled.player.rat : slot.label}
+    <div className="pitch-svg-wrap" style={{position:"relative",aspectRatio:"300/440"}}>
+      <div style={{position:"absolute",inset:0}}>
+        <PitchSVG/>
+      </div>
+      {/* Player badge overlay */}
+      <div className="pitch-grid">
+        {cells.map(({ row, col, slot, filled, isEmpty, isElig }, i) => {
+          if (!slot) return <div key={i} style={{ gridRow: row, gridColumn: col }} />;
+          const badgeCls = filled ? "f" : `e${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`;
+          return (
+            <div
+              key={i}
+              className={`ps${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`}
+              style={{ gridRow: row, gridColumn: col }}
+              onClick={isElig ? () => onPlace(slot) : undefined}
+            >
+              <div className={`badge ${badgeCls}`}>
+                {filled ? filled.player.rat : slot.label}
+              </div>
+              {filled ? (
+                <>
+                  <div className="sn fn">{filled.player.name.split(" ").slice(-1)[0]}</div>
+                  <div className="sp">{filled.player.pos}</div>
+                </>
+              ) : (
+                <div className="sn">{slot.label}</div>
+              )}
             </div>
-            <div className={`sn${filled ? " fn" : ""}`}>
-              {filled ? filled.player.name.split(" ").slice(-1)[0] : slot.full.split(" ")[0]}
-            </div>
-            {filled && <div className="sp">{filled.player.pos}</div>}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
