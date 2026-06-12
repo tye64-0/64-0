@@ -368,7 +368,10 @@ function simulate(myPlayers) {
     return {opp,ga,gb,out:ga>gb?"W":ga===gb?"D":"L"};
   });
   const pts = group.reduce((s,g)=>s+(g.out==="W"?3:g.out==="D"?1:0),0);
-  if(pts<4) return {elim:"Group Stage",group,rounds:[],playerStats};
+  if(pts<4){
+    const W2=group.filter(m=>m.out==="W").length, D2=group.filter(m=>m.out==="D").length, L2=group.filter(m=>m.out==="L").length;
+    return {elim:"Group Stage",group,rounds:[],playerStats,W:W2,D:D2,L:L2};
+  }
 
   const stages=["Round of 16","Quarter-Final","Semi-Final","Final"]; const rounds=[];
   for(let i=0;i<4;i++){
@@ -377,9 +380,19 @@ function simulate(myPlayers) {
     if(ga===gb){won=Math.random()>.48;pens=won?"Won on penalties":"Lost on penalties";}
     distributeStats(myPlayers, ga, gb, playerStats);
     rounds.push({stage:stages[i],opp,ga,gb,pens,won});
-    if(!won) return {elim:stages[i],group,rounds,playerStats};
+    if(!won){
+      const allM=[...group,...rounds];
+      const Wx=allM.filter(m=>m.out==="W"||m.won===true).length;
+      const Dx=allM.filter(m=>m.out==="D").length;
+      const Lx=allM.filter(m=>m.out==="L"||m.won===false).length;
+      return {elim:stages[i],group,rounds,playerStats,W:Wx,D:Dx,L:Lx};
+    }
   }
-  return {elim:null,group,rounds,champion:true,playerStats};
+  const allGs = [...group, ...rounds];
+  const W = allGs.filter(m=>(m.out||"")+"" === "W" || m.won===true).length;
+  const D = allGs.filter(m=>(m.out||"")+"" === "D").length;
+  const L = allGs.filter(m=>(m.out||"")+"" === "L" || m.won===false).length;
+  return {elim:null,group,rounds,champion:true,playerStats,W,D,L};
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -568,6 +581,27 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .trophy{text-align:center;padding:26px;background:linear-gradient(135deg,rgba(201,162,39,.1),transparent);border-top:1px solid var(--gdim)}
 .trophy-icon{font-size:3rem;margin-bottom:6px}
 .trophy-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.8rem;color:var(--gold)}
+/* Share buttons */
+.share-btn{width:100%;padding:12px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1px;cursor:pointer;transition:all .15s;border:1px solid var(--gbright);background:var(--gdim);color:var(--gold);text-transform:uppercase}
+.share-btn:hover{background:rgba(201,162,39,.25)}
+.share-btn-url{background:rgba(255,255,255,.04);border-color:var(--bdr);color:var(--txt2)}
+.share-btn-url:hover{background:rgba(255,255,255,.08)}
+.share-btn-lb{background:rgba(61,214,140,.06);border-color:rgba(61,214,140,.25);color:var(--grn)}
+.share-btn-lb:hover{background:rgba(61,214,140,.12)}
+/* Share card */
+.share-card{background:var(--surf2);border:1px solid var(--gdim);border-radius:10px;overflow:hidden;animation:fadeSlideIn .3s ease}
+.sc-header{background:linear-gradient(135deg,#1a2436,#0A0F1C);padding:16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gdim)}
+.sc-logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.6rem;color:var(--gold);letter-spacing:3px}
+.sc-result{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.95rem;color:var(--gold-hi)}
+.sc-team{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.4rem;color:var(--txt);padding:12px 16px 2px}
+.sc-meta{font-size:.68rem;color:var(--muted);padding:0 16px 12px;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--bdr)}
+.sc-players{padding:8px 0}
+.sc-player{display:flex;align-items:center;gap:10px;padding:7px 16px;border-bottom:1px solid var(--bdr2)}
+.sc-player:last-child{border-bottom:none}
+.sc-pos{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:.78rem;color:var(--gold);min-width:34px}
+.sc-name{flex:1;font-size:.84rem;font-weight:600}
+.sc-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1rem;color:var(--gold)}
+.sc-footer{text-align:center;padding:10px;font-size:.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;border-top:1px solid var(--bdr);background:rgba(0,0,0,.2)}
 /* Team name input */
 .team-name-input{width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:14px 16px;color:var(--txt);font-family:'Inter',sans-serif;font-size:1rem;outline:none;transition:border-color .15s}
 .team-name-input:focus{border-color:var(--gold)}
@@ -722,11 +756,93 @@ export default function App() {
   const [filter, setFilter] = useState("ALL");
   const [teamName, setTeamName] = useState("");
   const [results, setResults] = useState(null);
-  const [simFull, setSimFull] = useState(null);      // full computed result object
-  const [simMatches, setSimMatches] = useState([]);  // flat ordered match list
-  const [simStep, setSimStep] = useState(0);         // how many matches revealed so far
+  const [simFull, setSimFull] = useState(null);
+  const [simMatches, setSimMatches] = useState([]);
+  const [simStep, setSimStep] = useState(0);
+  const [leaderboard, setLeaderboard] = useState([]);   // loaded from storage
+  const [lbLoading, setLbLoading] = useState(false);
+  const [shareCardVisible, setShareCardVisible] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
   const REROLLS = { easy: 3, medium: 1, hard: 0 };
+
+  // Score a result for leaderboard ranking
+  function resultRank(simResult) {
+    if (!simResult) return 0;
+    if (simResult.champion) return 7;
+    const stageMap = { "Final":6, "Semi-Final":5, "Quarter-Final":4, "Round of 16":3, "Group Stage":2 };
+    return stageMap[simResult.elim] || 1;
+  }
+  function resultLabel(simResult) {
+    if (!simResult) return "–";
+    if (simResult.champion) return "🏆 Champions";
+    const icons = { "Final":"🥈 Final", "Semi-Final":"🥉 Semi-Final", "Quarter-Final":"⚽ Quarter-Final", "Round of 16":"⚽ Round of 16", "Group Stage":"❌ Group Stage" };
+    return icons[simResult.elim] || simResult.elim;
+  }
+
+  // Load leaderboard from shared storage
+  async function loadLeaderboard() {
+    setLbLoading(true);
+    try {
+      const res = await window.storage.get("lb_v1", true);
+      if (res) setLeaderboard(JSON.parse(res.value));
+    } catch(e) { setLeaderboard([]); }
+    setLbLoading(false);
+  }
+
+  // Submit score to shared leaderboard
+  async function submitScore() {
+    if (scoreSubmitted || !simFull) return;
+    const entry = {
+      name: teamName || "Anonymous",
+      formation,
+      difficulty,
+      rating: teamRat,
+      result: resultLabel(simFull),
+      rank: resultRank(simFull),
+      players: slots.map(s => ({ name: s.player.name, pos: s.player.pos, rat: s.player.rat, squad: s.squadKey })),
+      ts: Date.now(),
+    };
+    try {
+      // Get current board
+      let board = [];
+      try { const r = await window.storage.get("lb_v1", true); if(r) board = JSON.parse(r.value); } catch(e){}
+      board.push(entry);
+      // Sort by rank desc, then rating desc, keep top 100
+      board.sort((a,b) => b.rank - a.rank || b.rating - a.rating);
+      board = board.slice(0, 100);
+      await window.storage.set("lb_v1", JSON.stringify(board), true);
+      setLeaderboard(board);
+      setScoreSubmitted(true);
+    } catch(e) { console.error("Leaderboard save failed", e); }
+  }
+
+  // Encode XI into a shareable URL hash
+  function buildShareUrl() {
+    const data = {
+      n: teamName || "Anonymous XI",
+      f: formation,
+      d: difficulty,
+      r: resultLabel(simFull),
+      rat: teamRat,
+      p: slots.map(s => {
+        const sl = (formation ? FORMATIONS[formation] : []).find(x => x.id === s.slotId);
+        return [sl?.label || s.slotId, s.player.name, s.player.pos, s.player.rat];
+      }),
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    return window.location.href.split("?")[0] + "?xi=" + encoded;
+  }
+
+  function copyShareUrl() {
+    const url = buildShareUrl();
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+    });
+  }
 
   const fSlots = formation ? FORMATIONS[formation] : [];
   const filledIds = new Set(slots.map(s => s.slotId));
@@ -798,7 +914,6 @@ export default function App() {
   }
 
   function runSim() {
-    // Pre-compute all results but reveal them one match at a time
     const full = simulate(myPlayers);
     const allMatches = [
       ...full.group.map(g => ({ kind:"group", data:g })),
@@ -807,16 +922,43 @@ export default function App() {
     setSimStep(0);
     setSimMatches(allMatches);
     setSimFull(full);
+    setScoreSubmitted(false);
+    setShareCardVisible(false);
+    setShareCopied(false);
     setPhase("results");
-    // Reveal each match with a delay
     allMatches.forEach((_, i) => {
       setTimeout(() => setSimStep(i + 1), (i + 1) * 900);
     });
+    // Auto-submit to leaderboard once simulation completes
+    const totalDelay = allMatches.length * 900 + 400;
+    setTimeout(async () => {
+      const entry = {
+        name: teamName || "Anonymous",
+        formation,
+        difficulty,
+        rating: myPlayers.length ? Math.round(avgRat(myPlayers)) : 0,
+        result: resultLabel(full),
+        rank: resultRank(full),
+        W: full.W || 0, D: full.D || 0, L: full.L || 0,
+        players: slots.map(s => ({ name: s.player.name, pos: s.player.pos, rat: s.player.rat, squad: s.squadKey })),
+        ts: Date.now(),
+      };
+      try {
+        let board = [];
+        try { const r = await window.storage.get("lb_v1", true); if(r) board = JSON.parse(r.value); } catch(e){}
+        board.push(entry);
+        board.sort((a,b) => b.rank - a.rank || b.rating - a.rating);
+        board = board.slice(0, 100);
+        await window.storage.set("lb_v1", JSON.stringify(board), true);
+        setLeaderboard(board);
+        setScoreSubmitted(true);
+      } catch(e) {}
+    }, totalDelay);
   }
   function restart() {
     setPhase("home"); setDifficulty(null); setFormation(null); setSlots([]); setSpinning(false);
     setSpinDisp(null); setLandedSquad(null); setRerollsLeft(0); setUsedMap({}); setOpenPlayer(null);
-    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName("");
+    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false);
   }
 
   const sqPlayers = landedSquad ? SQUADS[landedSquad].players : [];
@@ -866,12 +1008,62 @@ export default function App() {
           <h1 className="hero-title">64<span>-0</span></h1>
           <p className="hero-desc">Spin the reel. Draft legends from every World Cup era. Build your ultimate XI and simulate the tournament.</p>
           <button className="btn-primary" onClick={() => setPhase("difficulty")}>Start New Run →</button>
+          <div style={{marginTop:14}}>
+            <button className="btn-ghost" onClick={() => { loadLeaderboard(); setShowLeaderboard(true); setPhase("leaderboard"); }}>
+              🏆 Leaderboard
+            </button>
+          </div>
           <div className="hero-stats">
             <div><div className="hs-n">{SQUAD_KEYS.length}</div><div className="hs-l">Squads</div></div>
             <div><div className="hs-n">880+</div><div className="hs-l">Players</div></div>
             <div><div className="hs-n">1966–2026</div><div className="hs-l">Eras</div></div>
             <div><div className="hs-n">5</div><div className="hs-l">Formations</div></div>
           </div>
+        </div>
+      )}
+
+      {/* LEADERBOARD */}
+      {phase === "leaderboard" && (
+        <div className="fp" style={{maxWidth:660,margin:"0 auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+            <button className="btn-ghost" onClick={() => setPhase("home")}>← Back</button>
+            <div className="fp-title" style={{margin:0}}>🏆 Leaderboard</div>
+          </div>
+          <div style={{fontSize:".72rem",color:"var(--muted)",marginBottom:16,letterSpacing:1}}>Top 100 teams ranked by best tournament result</div>
+          {lbLoading ? (
+            <div style={{textAlign:"center",padding:40,color:"var(--muted)"}}>Loading…</div>
+          ) : leaderboard.length === 0 ? (
+            <div style={{textAlign:"center",padding:40,color:"var(--muted)"}}>
+              <div style={{fontSize:"2rem",marginBottom:8}}>🏟️</div>
+              <div>No entries yet — be the first to play and submit!</div>
+            </div>
+          ) : (
+            <div className="rcard">
+              <div className="stat-table-head">
+                <span style={{width:28,flexShrink:0}}>#</span>
+                <span style={{flex:1}}>Team</span>
+                <span style={{width:72,textAlign:"center",flexShrink:0}}>Record</span>
+                <span style={{width:56,textAlign:"center",flexShrink:0}}>Result</span>
+                <span style={{width:36,textAlign:"center",flexShrink:0}}>Rat</span>
+              </div>
+              {leaderboard.map((e,i) => (
+                <div key={i} className="stat-row" style={{gap:8}}>
+                  <span style={{width:28,flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1rem",color:i===0?"var(--gold)":i===1?"#C0C0C0":i===2?"#CD7F32":"var(--muted)"}}>{i+1}</span>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:".84rem",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.name}</div>
+                    <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:1}}>{e.formation} · {e.difficulty}</div>
+                  </div>
+                  <span style={{width:72,textAlign:"center",flexShrink:0,fontSize:".72rem",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700}}>
+                    <span style={{color:"var(--grn)"}}>{e.W ?? "–"}W</span>
+                    {" "}<span style={{color:"var(--yel)"}}>{e.D ?? "–"}D</span>
+                    {" "}<span style={{color:"var(--red)"}}>{e.L ?? "–"}L</span>
+                  </span>
+                  <span style={{width:56,textAlign:"center",flexShrink:0,fontSize:".65rem",color:e.rank===7?"var(--gold)":e.rank>=5?"var(--grn)":"var(--txt2)"}}>{e.result.replace("🏆 ","").replace("🥈 ","").replace("🥉 ","").replace("⚽ ","").replace("❌ ","")}</span>
+                  <span style={{width:36,textAlign:"center",flexShrink:0,fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1rem",color:"var(--gold)"}}>{e.rating}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1108,7 +1300,14 @@ export default function App() {
             <div className="res-stage" style={{color:"var(--muted)"}}>Simulating…</div>
           )}
           <div className="res-stage-name">{teamName || "Your XI"}</div>
-          <div className="res-sub">Team Rating: {teamRat} · Formation: {formation} · {difficulty}</div>
+          <div className="res-sub">
+            Team Rating: {teamRat} · {formation} · {difficulty}
+            {simFull && <span style={{marginLeft:10}}>
+              <span style={{color:"var(--grn)",fontWeight:700}}>{simFull.W}W</span>
+              {" "}<span style={{color:"var(--yel)",fontWeight:700}}>{simFull.D}D</span>
+              {" "}<span style={{color:"var(--red)",fontWeight:700}}>{simFull.L}L</span>
+            </span>}
+          </div>
 
           {/* GROUP STAGE */}
           <div className="rcard">
@@ -1274,7 +1473,59 @@ export default function App() {
               );
             })}
           </div>
-          <div style={{textAlign:"center",marginTop:24}}>
+          {/* SHARE + LEADERBOARD ACTIONS */}
+          {simStep >= simMatches.length && (
+            <div style={{marginTop:20,display:"flex",flexDirection:"column",gap:10}}>
+
+              {/* Share card button */}
+              <button
+                className="share-btn"
+                onClick={() => setShareCardVisible(v => !v)}
+              >
+                {shareCardVisible ? "✕ Close Share Card" : "📋 Share Your XI"}
+              </button>
+
+              {shareCardVisible && (
+                <div className="share-card" id="share-card">
+                  <div className="sc-header">
+                    <div className="sc-logo">64-0</div>
+                    <div className="sc-result">{resultLabel(simFull)}</div>
+                  </div>
+                  <div className="sc-team">{teamName || "My XI"}</div>
+                  <div className="sc-meta">
+                    {formation} · Rating {teamRat} · {difficulty}
+                    {simFull && ` · ${simFull.W}W ${simFull.D}D ${simFull.L}L`}
+                  </div>
+                  <div className="sc-players">
+                    {slots.map((s,i) => {
+                      const sl = fSlots.find(f => f.id === s.slotId);
+                      return (
+                        <div key={i} className="sc-player">
+                          <span className="sc-pos">{sl?.label}</span>
+                          <span className="sc-name">{s.player.name}</span>
+                          <span className="sc-rat">{s.player.rat}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="sc-footer">64-0.com</div>
+                </div>
+              )}
+
+              {/* Copy URL button */}
+              <button className="share-btn share-btn-url" onClick={copyShareUrl}>
+                {shareCopied ? "✓ Link copied!" : "🔗 Copy shareable link"}
+              </button>
+
+              {/* View leaderboard */}
+              <button className="share-btn share-btn-lb" onClick={() => { loadLeaderboard(); setPhase("leaderboard"); }}>
+                🏆 {scoreSubmitted ? "View Leaderboard — you're on it!" : "View Leaderboard"}
+              </button>
+
+            </div>
+          )}
+
+          <div style={{textAlign:"center",marginTop:16}}>
             <button className="btn-primary" onClick={restart}>Play Again →</button>
           </div>
         </div>
