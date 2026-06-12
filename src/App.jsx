@@ -1173,11 +1173,11 @@ export default function App() {
           <div style={{maxWidth:440,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
             <div>
               <div style={{fontSize:".7rem",color:"var(--gold)",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Player 1 Name</div>
-              <input className="team-name-input" type="text" placeholder="e.g. Tye" value={h2hName1} maxLength={20} onChange={e=>setH2hName1(e.target.value)} />
+              <input className="team-name-input" type="text" placeholder="e.g. Player 1" value={h2hName1} maxLength={20} onChange={e=>setH2hName1(e.target.value)} />
             </div>
             <div>
               <div style={{fontSize:".7rem",color:"var(--gold)",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Player 2 Name</div>
-              <input className="team-name-input" type="text" placeholder="e.g. Mate" value={h2hName2} maxLength={20} onChange={e=>setH2hName2(e.target.value)} />
+              <input className="team-name-input" type="text" placeholder="e.g. Player 2" value={h2hName2} maxLength={20} onChange={e=>setH2hName2(e.target.value)} />
             </div>
             <div>
               <div style={{fontSize:".7rem",color:"var(--muted)",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Difficulty</div>
@@ -1856,4 +1856,3 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
     </div>
   );
 }
-
