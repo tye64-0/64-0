@@ -312,8 +312,13 @@ function canFill(playerPos, slotLabel) {
 // ─── SIMULATOR ────────────────────────────────────────────────────────────────
 function avgRat(players) { return players.reduce((s,p) => s + p.rat, 0) / players.length; }
 function simMatch(myR, oppR) {
-  const a = myR + (Math.random()*18-9), b = oppR + (Math.random()*18-9);
-  return { ga: Math.max(0,Math.round((a-68)/7+Math.random()*2.2-0.3)), gb: Math.max(0,Math.round((b-68)/7+Math.random()*2.2-0.3)) };
+  // Realistic World Cup scoring: avg ~2.5-3 goals per game
+  // Elite vs weak: ~3.3, even match: ~1.6, 5+ goals: rare (<10%)
+  const a = myR + (Math.random()*10-5);
+  const b = oppR + (Math.random()*10-5);
+  const ga = Math.max(0, Math.round((a-74)/10 + Math.random()*1.6 - 0.4));
+  const gb = Math.max(0, Math.round((b-74)/10 + Math.random()*1.6 - 0.4));
+  return { ga, gb };
 }
 // Distribute goals/assists across players for a match
 function distributeStats(players, goalsScored, conceded, stats) {
@@ -1074,9 +1079,9 @@ export default function App() {
 
     // Build a flat timeline of all events across all matches
     // Each match: show opponent name first, then count up goals, then lock result
-    let cursor = 600; // ms from now
-    const GOAL_DELAY = 500;   // ms between goal events within a match
-    const MATCH_GAP  = 900;   // ms pause between matches
+    let cursor = 1000; // ms from now
+    const GOAL_DELAY = 2000;  // ms between goal events
+    const MATCH_GAP  = 3000;  // ms pause between matches
 
     allMatches.forEach((_, i) => {
       const evts = (full.allEvents || {})[i] || [];
@@ -1105,7 +1110,7 @@ export default function App() {
       });
 
       // Lock the match result — reveal final score + W/D/L badge, pin events
-      const tEnd = cursor + 300;
+      const tEnd = cursor + 1000;
       simTimeouts.current.push(setTimeout(() => {
         setSimStep(i + 1);
         setPinnedEvents(prev => ({...prev, [i]: evts}));
