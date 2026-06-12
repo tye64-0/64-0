@@ -2019,7 +2019,7 @@ export default function App() {
           <div className="res-stage-name">{teamName || "Your XI"}</div>
           <div className="res-sub">
             Team Rating: {teamRat} · {formation} · {difficulty}
-            {simFull && <span style={{marginLeft:10}}>
+            {simFull && simStep >= simMatches.length && <span style={{marginLeft:10}}>
               <span style={{color:"var(--grn)",fontWeight:700}}>{simFull.W}W</span>
               {" "}<span style={{color:"var(--yel)",fontWeight:700}}>{simFull.D}D</span>
               {" "}<span style={{color:"var(--red)",fontWeight:700}}>{simFull.L}L</span>
