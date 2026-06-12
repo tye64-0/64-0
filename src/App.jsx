@@ -474,7 +474,7 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .pitch-svg-wrap{width:100%;position:relative;background:#0a1e0a}
 .pitch-svg-wrap svg{display:block;width:100%;height:auto}
 /* Player badge overlay grid */
-.pitch-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(6,1fr)}
+.abs-badge{cursor:default}
 .ps{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;transition:all .12s;position:relative;z-index:2}
 .ps.can{cursor:pointer}
 .ps.can:hover .badge{border-color:rgba(201,162,39,.7);background:rgba(201,162,39,.12)}
@@ -1823,120 +1823,98 @@ export default function App() {
 }
 
 // ─── PITCH COMPONENT ──────────────────────────────────────────────────────────
+// Column x% centres: col1=12%, col2=30%, col3=50%(centre), col4=70%, col5=88%
+// Row y% centres:    row1=8.3%(FWD top), row2=25%, row3=41.7%, row4=58.3%, row5=75%, row6=91.7%(GK)
+const COL_X = { 1:12, 2:30, 3:50, 4:70, 5:88 };
+const ROW_Y = { 1:8.3, 2:25, 3:41.7, 4:58.3, 5:75, 6:91.7 };
+
 function Pitch({ fSlots, slots, openPlayer, onPlace }) {
   const filledMap = {};
   slots.forEach(s => { filledMap[s.slotId] = s; });
 
-  const cells = [];
-  for (let row = 1; row <= 6; row++) {
-    for (let col = 1; col <= 6; col++) {
-      const slot = fSlots.find(s => s.row === row && s.col === col);
-      const filled = slot ? filledMap[slot.id] : null;
-      const isEmpty = slot && !filled;
-      const isElig = isEmpty && openPlayer && canFill(openPlayer.player.pos, slot.label);
-      cells.push({ row, col, slot, filled, isEmpty, isElig });
-    }
-  }
-
-  // Pitch SVG markings — proper football pitch with stripes, lines, arcs
-  // Grid layout: 6 rows x 6 cols over 300x440 viewBox
-  // Row centres (y): 1=36.7, 2=110, 3=183.3, 4=256.7, 5=330, 6=403.3
-  // Pitch outline sits within the grid: top at ~y=10, bottom at ~y=432
-  // Halfway line at y=220 (between rows 3 and 4)
-  // Top box: rows 1-2 zone (y=10 to ~y=145)
-  // Bottom box: rows 5-6 zone (y=295 to ~y=432)
-
-  const PitchSVG = () => (
-    <svg viewBox="0 0 300 440" xmlns="http://www.w3.org/2000/svg" style={{display:"block",width:"100%",height:"100%"}}>
-      <defs>
-        <pattern id="stripes" x="0" y="0" width="300" height="73.3" patternUnits="userSpaceOnUse">
-          <rect width="300" height="36.65" fill="#0b1f0b"/>
-          <rect y="36.65" width="300" height="36.65" fill="#0d240d"/>
-        </pattern>
-      </defs>
-
-      {/* Grass */}
-      <rect width="300" height="440" fill="url(#stripes)"/>
-
-      {/* Pitch outline */}
-      <rect x="18" y="10" width="264" height="420" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5"/>
-
-      {/* Halfway line — between row 3 and row 4 at y=220 */}
-      <line x1="18" y1="220" x2="282" y2="220" stroke="rgba(255,255,255,0.14)" strokeWidth="1.2"/>
-
-      {/* Centre circle — centred on halfway line */}
-      <circle cx="150" cy="220" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
-      <circle cx="150" cy="220" r="2.5" fill="rgba(255,255,255,0.22)"/>
-
-      {/* ── TOP PENALTY AREA ──
-           Row 1 centre = y=36.7, row 2 centre = y=110
-           Box bottom edge should sit just above row 2 badges (y~145)
-           Box top = pitch top = y=10, height=120 → bottom=130 */}
-      <rect x="72" y="10" width="156" height="120" fill="none" stroke="rgba(255,255,255,0.11)" strokeWidth="1.2"/>
-      {/* Top 6-yard box */}
-      <rect x="108" y="10" width="84" height="44" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
-      {/* Top penalty spot — inside box at y=82 */}
-      <circle cx="150" cy="82" r="2.2" fill="rgba(255,255,255,0.18)"/>
-      {/* Top penalty arc — bulges DOWN away from box bottom at y=130 */}
-      <path d="M 98 130 A 52 52 0 0 1 202 130" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2"/>
-
-      {/* ── BOTTOM PENALTY AREA ──
-           Row 5 centre = y=330, row 6 centre = y=403
-           Box top should sit just below row 5 badges (~y=295)
-           Box top = y=310, bottom = pitch bottom = y=430, height=120 */}
-      <rect x="72" y="310" width="156" height="120" fill="none" stroke="rgba(255,255,255,0.11)" strokeWidth="1.2"/>
-      {/* Bottom 6-yard box */}
-      <rect x="108" y="386" width="84" height="44" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
-      {/* Bottom penalty spot */}
-      <circle cx="150" cy="358" r="2.2" fill="rgba(255,255,255,0.18)"/>
-      {/* Bottom penalty arc — bulges UP away from box top at y=310 */}
-      <path d="M 98 310 A 52 52 0 0 0 202 310" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2"/>
-
-      {/* Top goal */}
-      <rect x="117" y="2" width="66" height="10" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5"/>
-      {/* Bottom goal */}
-      <rect x="117" y="428" width="66" height="10" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5"/>
-
-      {/* Corner arcs */}
-      <path d="M 18 22 A 12 12 0 0 1 30 10" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
-      <path d="M 270 10 A 12 12 0 0 1 282 22" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
-      <path d="M 18 418 A 12 12 0 0 0 30 430" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
-      <path d="M 270 430 A 12 12 0 0 0 282 418" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
-    </svg>
-  );
-
   return (
-    <div className="pitch-svg-wrap" style={{position:"relative",aspectRatio:"300/440"}}>
+    <div className="pitch-svg-wrap" style={{position:"relative", width:"100%", paddingBottom:"146.7%"}}>
+      {/* SVG pitch markings */}
       <div style={{position:"absolute",inset:0}}>
-        <PitchSVG/>
+        <svg viewBox="0 0 300 440" xmlns="http://www.w3.org/2000/svg" style={{width:"100%",height:"100%",display:"block"}}>
+          <defs>
+            <pattern id="stripes" x="0" y="0" width="300" height="73.33" patternUnits="userSpaceOnUse">
+              <rect width="300" height="36.67" fill="#0b1e0b"/>
+              <rect y="36.67" width="300" height="36.66" fill="#0d230d"/>
+            </pattern>
+          </defs>
+          <rect width="300" height="440" fill="url(#stripes)"/>
+          {/* Pitch outline */}
+          <rect x="16" y="6" width="268" height="428" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5"/>
+          {/* Halfway line at y=220 */}
+          <line x1="16" y1="220" x2="284" y2="220" stroke="rgba(255,255,255,0.14)" strokeWidth="1.2"/>
+          {/* Centre circle */}
+          <circle cx="150" cy="220" r="44" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+          <circle cx="150" cy="220" r="2.5" fill="rgba(255,255,255,0.22)"/>
+          {/* Their goal (top) */}
+          <rect x="117" y="0" width="66" height="8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+          {/* Their 18yd box: y=6 to y=79 */}
+          <rect x="65" y="6" width="170" height="73" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2"/>
+          {/* Their 6yd box: y=6 to y=30 */}
+          <rect x="111" y="6" width="78" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+          {/* Their penalty spot */}
+          <circle cx="150" cy="55" r="2.2" fill="rgba(255,255,255,0.2)"/>
+          {/* Their penalty arc — curves DOWN into pitch from box bottom y=79 */}
+          <path d="M 119.3 79 A 39 39 0 0 1 180.7 79" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+          {/* Our goal (bottom) */}
+          <rect x="117" y="432" width="66" height="8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
+          {/* Our 18yd box: y=361 to y=434 */}
+          <rect x="65" y="361" width="170" height="73" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.2"/>
+          {/* Our 6yd box: y=410 to y=434 */}
+          <rect x="111" y="410" width="78" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+          {/* Our penalty spot */}
+          <circle cx="150" cy="385" r="2.2" fill="rgba(255,255,255,0.2)"/>
+          {/* Our penalty arc — curves UP into pitch from box top y=361 */}
+          <path d="M 119.3 361 A 39 39 0 0 0 180.7 361" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+          {/* Corner arcs */}
+          <path d="M 16 18 A 12 12 0 0 1 28 6"    fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+          <path d="M 272 6 A 12 12 0 0 1 284 18"   fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+          <path d="M 16 422 A 12 12 0 0 0 28 434"  fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+          <path d="M 272 434 A 12 12 0 0 0 284 422" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+        </svg>
       </div>
-      {/* Player badge overlay */}
-      <div className="pitch-grid">
-        {cells.map(({ row, col, slot, filled, isEmpty, isElig }, i) => {
-          if (!slot) return <div key={i} style={{ gridRow: row, gridColumn: col }} />;
-          const badgeCls = filled ? "f" : `e${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`;
-          return (
-            <div
-              key={i}
-              className={`ps${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`}
-              style={{ gridRow: row, gridColumn: col }}
-              onClick={isElig ? () => onPlace(slot) : undefined}
-            >
-              <div className={`badge ${badgeCls}`}>
-                {filled ? filled.player.rat : slot.label}
-              </div>
-              {filled ? (
-                <>
-                  <div className="sn fn">{filled.player.name.split(" ").slice(-1)[0]}</div>
-                  <div className="sp">{filled.player.pos}</div>
-                </>
-              ) : (
-                <div className="sn">{slot.label}</div>
-              )}
+
+      {/* Player badges — absolutely positioned using COL_X / ROW_Y */}
+      {fSlots.map((slot, i) => {
+        const filled   = filledMap[slot.id];
+        const isEmpty  = !filled;
+        const isElig   = isEmpty && openPlayer && canFill(openPlayer.player.pos, slot.label);
+        const xPct     = COL_X[slot.col] ?? 50;
+        const yPct     = ROW_Y[slot.row] ?? 50;
+        const badgeCls = filled ? "f" : `e${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`;
+
+        return (
+          <div
+            key={slot.id}
+            className={`ps abs-badge${isElig ? " glow" : ""}${isEmpty ? " can" : ""}`}
+            style={{
+              position:"absolute",
+              left:`${xPct}%`,
+              top:`${yPct}%`,
+              transform:"translate(-50%,-50%)",
+              zIndex:2,
+            }}
+            onClick={isElig ? () => onPlace(slot) : undefined}
+          >
+            <div className={`badge ${badgeCls}`}>
+              {filled ? filled.player.rat : slot.label}
             </div>
-          );
-        })}
-      </div>
+            {filled ? (
+              <>
+                <div className="sn fn">{filled.player.name.split(" ").slice(-1)[0]}</div>
+                <div className="sp">{filled.player.pos}</div>
+              </>
+            ) : (
+              <div className="sn">{slot.label}</div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
