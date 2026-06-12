@@ -597,6 +597,14 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .trophy{text-align:center;padding:26px;background:linear-gradient(135deg,rgba(201,162,39,.1),transparent);border-top:1px solid var(--gdim)}
 .trophy-icon{font-size:3rem;margin-bottom:6px}
 .trophy-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.8rem;color:var(--gold)}
+/* Confetti */
+.confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:999;overflow:hidden}
+.confetti-piece{position:absolute;top:-10px;width:8px;height:8px;border-radius:1px;animation:confettiFall linear forwards}
+@keyframes confettiFall{
+  0%  {transform:translateY(0) rotate(0deg);   opacity:1}
+  80% {opacity:1}
+  100%{transform:translateY(110vh) rotate(720deg); opacity:0}
+}
 /* Share buttons */
 .share-btn{width:100%;padding:12px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;letter-spacing:1px;cursor:pointer;transition:all .15s;border:1px solid var(--gbright);background:var(--gdim);color:var(--gold);text-transform:uppercase}
 .share-btn:hover{background:rgba(201,162,39,.25)}
@@ -1466,15 +1474,15 @@ export default function App() {
                         <div className="pred-detail">{pred.detail}</div>
                         {/* Prediction bar */}
                         <div className="pred-bar-wrap">
-                          {["Group","R16","QF","SF","Final","🏆"].map((s,i) => (
-                            <div key={i} className={`pred-bar-seg${i < pred.rank ? " lit" : ""}`}
-                              style={{background: i < pred.rank ? pred.colour : undefined}}
+                          {["Group","R16","QF","SF","Final","🏆"].map((seg,si) => (
+                            <div key={si} className={`pred-bar-seg${si < pred.rank ? " lit" : ""}`}
+                              style={{background: si < pred.rank ? pred.colour : undefined}}
                             />
                           ))}
                         </div>
                         <div className="pred-bar-labels">
-                          {["Group","R16","QF","SF","Final","🏆"].map((s,i) => (
-                            <span key={i} className="pred-bar-lbl">{s}</span>
+                          {["Group","R16","QF","SF","Final","🏆"].map((seg,si) => (
+                            <span key={si} className="pred-bar-lbl">{seg}</span>
                           ))}
                         </div>
                       </div>
@@ -1614,6 +1622,9 @@ export default function App() {
       )}
 
       {/* RESULTS */}
+      {phase === "results" && simFull && simFull.champion && simStep >= simMatches.length && (
+        <Confetti />
+      )}
       {phase === "results" && simFull && (
         <div className="res">
           {/* Header — only show final outcome once all matches revealed */}
@@ -1870,6 +1881,37 @@ export default function App() {
       )}
     </div>
   );
+}
+
+// ─── CONFETTI COMPONENT ───────────────────────────────────────────────────────
+function Confetti() {
+  const pieces = [];
+  const colours = ["#C9A227","#F0C040","#ffffff","#3DD68C","#F26B6B","#60A5FA","#F5B942","#E879F9"];
+  const count = 120;
+  for (let i = 0; i < count; i++) {
+    const left    = Math.random() * 100;
+    const delay   = Math.random() * 3;
+    const dur     = 2.5 + Math.random() * 2.5;
+    const colour  = colours[Math.floor(Math.random() * colours.length)];
+    const size    = 6 + Math.random() * 8;
+    const isRect  = Math.random() > 0.5;
+    pieces.push(
+      <div
+        key={i}
+        className="confetti-piece"
+        style={{
+          left:`${left}%`,
+          background: colour,
+          width: isRect ? size*1.5 : size,
+          height: size,
+          borderRadius: isRect ? "1px" : "50%",
+          animationDuration:`${dur}s`,
+          animationDelay:`${delay}s`,
+        }}
+      />
+    );
+  }
+  return <div className="confetti-wrap">{pieces}</div>;
 }
 
 // ─── PITCH COMPONENT ──────────────────────────────────────────────────────────
