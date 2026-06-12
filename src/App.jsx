@@ -2356,7 +2356,7 @@ function Confetti() {
 // Column x% centres: col1=12%, col2=30%, col3=50%(centre), col4=70%, col5=88%
 // Row y% centres:    row1=8.3%(FWD top), row2=25%, row3=41.7%, row4=58.3%, row5=75%, row6=91.7%(GK)
 const COL_X = { 1:12, 2:30, 3:50, 4:70, 5:88 };
-const ROW_Y = { 1:8.3, 2:25, 3:41.7, 4:58.3, 5:75, 6:91.7 };
+const ROW_Y = { 1:24, 2:34, 3:46, 4:59, 5:73, 6:88 };
 
 function Pitch({ fSlots, slots, openPlayer, onPlace, expertMode }) {
   const filledMap = {};
