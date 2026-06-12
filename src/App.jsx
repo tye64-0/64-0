@@ -193,18 +193,18 @@ const SQUAD_FACTS = {
   "South Korea 2022":  "Son Heung-min, playing through a fractured eye socket with a protective mask, fired South Korea to the last 16. They lost narrowly to Brazil in an electric game.",
   "Switzerland 2022":  "Switzerland knocked out Serbia with a dramatic late Shaqiri winner. They beat Portugal's second-string side to go through before losing to Portugal in the quarters.",
   "Senegal 2022":      "Sadio Mané broke his hand days before the tournament but Senegal still reached the last 16 as AFCON holders. They lost to England in a tight game.",
-  "England 2026":      "England returned to the last four for the second time in two tournaments. Bellingham's tournament form was sensational, drawing comparisons to Gascoigne in 1990.",
-  "Spain 2026":        "Lamine Yamal at just 18 became the tournament's defining player, with Spain playing the most attractive football of any nation. Their third World Cup title.",
-  "France 2026":       "Mbappé lifted the trophy on home soil — a poetic end to France's greatest ever generation. His partnership with Marcus Thuram was unstoppable throughout.",
-  "Germany 2026":      "Florian Wirtz's performances drew comparisons to Zidane as Germany reached the semi-finals in a tournament that proved they are back among football's elite.",
-  "Brazil 2026":       "Vinícius Jr. was the tournament's best player and Endrick, just 19, scored crucial goals. Brazil won their sixth title in an emotional final at the Maracanã.",
-  "Argentina 2026":    "Defending champions Argentina bowed out in the semi-finals. Messi, now 38, played his final international minutes to a standing ovation from the global audience.",
-  "Portugal 2026":     "Rúben Dias was a colossus as Portugal reached the semi-finals. Ronaldo, at 41, played a supporting role — but still scored twice to the delight of the crowd.",
-  "Netherlands 2026":  "Virgil van Dijk captained a well-organised Dutch side to the quarter-finals. Xavi Simons was their most creative player as a new generation emerged.",
-  "Italy 2026":        "Italy's revenge after missing the 2022 tournament entirely due to play-off heartbreak. Barella and Tonali dominated midfields as the Azzurri reached the semis.",
-  "Belgium 2026":      "Kevin De Bruyne's final World Cup ended in the quarter-finals. His performances were a reminder of what a generational talent he has been across his career.",
-  "USA 2026":          "Co-hosts USA reached the quarter-finals in front of their own fans — the best performance in the nation's World Cup history. Pulisic was the emotional leader throughout.",
-  "Morocco 2026":      "Morocco backed up their 2022 heroics by reaching the quarter-finals again. Achraf Hakimi was one of the tournament's best players for the second successive World Cup.",
+  "England 2026":      "England head into 2026 as genuine contenders. Bellingham, Kane, Saka and Foden give them arguably their most talented squad since 1966 — the pressure is enormous.",
+  "Spain 2026":        "Defending European Champions, Spain arrive as many people's favourites. Lamine Yamal at 18 is already being called generational, and Rodri anchors one of the best midfields on the planet.",
+  "France 2026":       "France are the nearly-men of recent World Cups — finalists in 2022, semi-finalists in 2018. With Mbappé in his prime and Griezmann pulling strings, there are no excuses this time.",
+  "Germany 2026":      "Germany have something to prove after humiliating group-stage exits in 2018 and 2022. Wirtz and Musiala give them a creative spark that has been missing for years — expect them to go deep.",
+  "Brazil 2026":       "Brazil's wait for a sixth title stretches to 24 years. With Vinícius Jr. in devastating form and a new generation emerging, the pressure on this squad at the Maracanã is immense.",
+  "Argentina 2026":    "Defending World Champions and the hottest favourites in years. This is almost certainly Messi's last World Cup at 38 — every match could be his final. A nation holds its breath.",
+  "Portugal 2026":     "A squad full of world-class talent led by Bruno Fernandes and Bernardo Silva. Ronaldo at 41 is the great unknown — does he still have it? Rúben Dias makes them hard to beat.",
+  "Netherlands 2026":  "The Netherlands have quietly built a superb squad. Van Dijk leads a rock-solid defence, Frenkie de Jong controls midfield, and Xavi Simons brings the creativity. Dark horses for the title.",
+  "Italy 2026":        "Italy are back after the humiliation of missing 2022 via a play-off defeat. Donnarumma, Bastoni, Barella and Tonali form a formidable spine — the Azzurri have a point to prove.",
+  "Belgium 2026":      "The golden generation's last dance. De Bruyne at 34 may never be this close to a World Cup again. Belgium have the quality to go all the way — the question is whether they can finally deliver.",
+  "USA 2026":          "Co-hosts USA will play every game in front of enormous home support. Pulisic leads a young, athletic squad that has been quietly improving for years — they could spring the biggest surprise of the tournament.",
+  "Morocco 2026":      "After their historic 2022 semi-final run, Morocco arrive with genuine belief. Hakimi is one of the best full-backs on earth and Amrabat the engine in midfield — nobody wants to face them.",
 };
 
 // ─── FORMATIONS ───────────────────────────────────────────────────────────────
@@ -1171,7 +1171,7 @@ export default function App() {
           <p className="hero-desc">Spin the reel. Draft legends from every World Cup era. Build your ultimate XI and simulate the tournament.</p>
           {personalBests.runs > 0 && (
             <div style={{marginTop:18,padding:"10px 18px",background:"var(--surf)",border:"1px solid var(--gdim)",borderRadius:6,display:"inline-block",fontSize:".8rem",color:"var(--txt2)"}}>
-              Your best: <strong style={{color:"var(--gold)"}}>{personalBests.bestStage.replace(/[🏆🥈🥉⚽⚠️❌]\s*/,"")}</strong>
+              Your best: <strong style={{color:"var(--gold)"}}>{(personalBests.bestStage.split(" ").slice(1).join(" ") || personalBests.bestStage)}</strong>
               <span style={{color:"var(--muted)",marginLeft:6}}>· {personalBests.runs} run{personalBests.runs!==1?"s":""} · {personalBests.wins} win{personalBests.wins!==1?"s":""}</span>
               <span style={{color:"var(--muted)",marginLeft:6}}>— can you do better?</span>
             </div>
@@ -1247,7 +1247,7 @@ export default function App() {
                     <div style={{fontSize:".65rem",color:"var(--muted)",marginTop:1}}>{h.formation} · {h.difficulty}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:".82rem",fontWeight:700,color:h.champion?"var(--gold)":resultRank({champion:h.champion,elim:h.stage.replace(/[^a-zA-Z\s-]/g,"").trim()})>=5?"var(--grn)":"var(--txt2)"}}>{h.stage.replace(/[🏆🥈🥉⚽⚠️❌]\s*/,"")}</div>
+                    <div style={{fontSize:".82rem",fontWeight:700,color:h.champion?"var(--gold)":resultRank({champion:h.champion,elim:h.stage.replace(/[^a-zA-Z\s-]/g,"").trim()})>=5?"var(--grn)":"var(--txt2)"}}>{h.stage.split(" ").slice(1).join(" ") || h.stage}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:".95rem",color:"var(--gold)"}}>{h.rat}</div>
                   </div>
                 </div>
