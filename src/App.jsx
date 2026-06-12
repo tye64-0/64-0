@@ -1860,7 +1860,7 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
           {/* Their penalty spot */}
           <circle cx="150" cy="55" r="2.2" fill="rgba(255,255,255,0.2)"/>
           {/* Their penalty arc — curves DOWN into pitch from box bottom y=79 */}
-          <path d="M 119.3 79 A 39 39 0 0 1 180.7 79" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+          <path d="M 117.4 79 A 40.8 40.8 0 0 1 182.6 79" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5"/>
           {/* Our goal (bottom) */}
           <rect x="117" y="432" width="66" height="8" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5"/>
           {/* Our 18yd box: y=361 to y=434 */}
@@ -1870,7 +1870,7 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
           {/* Our penalty spot */}
           <circle cx="150" cy="385" r="2.2" fill="rgba(255,255,255,0.2)"/>
           {/* Our penalty arc — curves UP into pitch from box top y=361 */}
-          <path d="M 119.3 361 A 39 39 0 0 0 180.7 361" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+          <path d="M 117.4 361 A 40.8 40.8 0 0 0 182.6 361" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.5"/>
           {/* Corner arcs */}
           <path d="M 16 18 A 12 12 0 0 1 28 6"    fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
           <path d="M 272 6 A 12 12 0 0 1 284 18"   fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
