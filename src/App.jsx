@@ -1839,61 +1839,69 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
   }
 
   // Pitch SVG markings — proper football pitch with stripes, lines, arcs
+  // Grid layout: 6 rows x 6 cols over 300x440 viewBox
+  // Row centres (y): 1=36.7, 2=110, 3=183.3, 4=256.7, 5=330, 6=403.3
+  // Pitch outline sits within the grid: top at ~y=10, bottom at ~y=432
+  // Halfway line at y=220 (between rows 3 and 4)
+  // Top box: rows 1-2 zone (y=10 to ~y=145)
+  // Bottom box: rows 5-6 zone (y=295 to ~y=432)
+
   const PitchSVG = () => (
     <svg viewBox="0 0 300 440" xmlns="http://www.w3.org/2000/svg" style={{display:"block",width:"100%",height:"100%"}}>
       <defs>
-        {/* Alternating grass stripes */}
-        <pattern id="stripes" x="0" y="0" width="300" height="44" patternUnits="userSpaceOnUse">
-          <rect width="300" height="22" fill="#0b1f0b"/>
-          <rect y="22" width="300" height="22" fill="#0d240d"/>
+        <pattern id="stripes" x="0" y="0" width="300" height="73.3" patternUnits="userSpaceOnUse">
+          <rect width="300" height="36.65" fill="#0b1f0b"/>
+          <rect y="36.65" width="300" height="36.65" fill="#0d240d"/>
         </pattern>
       </defs>
 
-      {/* Grass base with stripes */}
+      {/* Grass */}
       <rect width="300" height="440" fill="url(#stripes)"/>
 
       {/* Pitch outline */}
-      <rect x="20" y="16" width="260" height="408" fill="none" stroke="rgba(255,255,255,0.13)" strokeWidth="1.5"/>
+      <rect x="18" y="10" width="264" height="420" fill="none" stroke="rgba(255,255,255,0.14)" strokeWidth="1.5"/>
 
-      {/* Halfway line */}
-      <line x1="20" y1="220" x2="280" y2="220" stroke="rgba(255,255,255,0.13)" strokeWidth="1.2"/>
+      {/* Halfway line — between row 3 and row 4 at y=220 */}
+      <line x1="18" y1="220" x2="282" y2="220" stroke="rgba(255,255,255,0.14)" strokeWidth="1.2"/>
 
-      {/* Centre circle */}
-      <circle cx="150" cy="220" r="40" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
-      {/* Centre spot */}
-      <circle cx="150" cy="220" r="2.5" fill="rgba(255,255,255,0.2)"/>
+      {/* Centre circle — centred on halfway line */}
+      <circle cx="150" cy="220" r="42" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      <circle cx="150" cy="220" r="2.5" fill="rgba(255,255,255,0.22)"/>
 
-      {/* Top penalty area */}
-      <rect x="75" y="16" width="150" height="60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      {/* ── TOP PENALTY AREA ──
+           Row 1 centre = y=36.7, row 2 centre = y=110
+           Box bottom edge should sit just above row 2 badges (y~145)
+           Box top = pitch top = y=10, height=120 → bottom=130 */}
+      <rect x="72" y="10" width="156" height="120" fill="none" stroke="rgba(255,255,255,0.11)" strokeWidth="1.2"/>
       {/* Top 6-yard box */}
-      <rect x="110" y="16" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
-      {/* Top penalty spot */}
-      <circle cx="150" cy="58" r="2" fill="rgba(255,255,255,0.15)"/>
-      {/* Top penalty arc */}
-      <path d="M 110 76 A 40 40 0 0 1 190 76" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.2"/>
+      <rect x="108" y="10" width="84" height="44" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+      {/* Top penalty spot — inside box at y=82 */}
+      <circle cx="150" cy="82" r="2.2" fill="rgba(255,255,255,0.18)"/>
+      {/* Top penalty arc — bulges DOWN away from box bottom at y=130 */}
+      <path d="M 98 130 A 52 52 0 0 1 202 130" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2"/>
 
-      {/* Bottom penalty area */}
-      <rect x="75" y="364" width="150" height="60" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="1.2"/>
+      {/* ── BOTTOM PENALTY AREA ──
+           Row 5 centre = y=330, row 6 centre = y=403
+           Box top should sit just below row 5 badges (~y=295)
+           Box top = y=310, bottom = pitch bottom = y=430, height=120 */}
+      <rect x="72" y="310" width="156" height="120" fill="none" stroke="rgba(255,255,255,0.11)" strokeWidth="1.2"/>
       {/* Bottom 6-yard box */}
-      <rect x="110" y="400" width="80" height="24" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
+      <rect x="108" y="386" width="84" height="44" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1"/>
       {/* Bottom penalty spot */}
-      <circle cx="150" cy="382" r="2" fill="rgba(255,255,255,0.15)"/>
-      {/* Bottom penalty arc */}
-      <path d="M 110 364 A 40 40 0 0 0 190 364" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.2"/>
+      <circle cx="150" cy="358" r="2.2" fill="rgba(255,255,255,0.18)"/>
+      {/* Bottom penalty arc — bulges UP away from box top at y=310 */}
+      <path d="M 98 310 A 52 52 0 0 0 202 310" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1.2"/>
 
       {/* Top goal */}
-      <rect x="120" y="8" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+      <rect x="117" y="2" width="66" height="10" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5"/>
       {/* Bottom goal */}
-      <rect x="120" y="422" width="60" height="10" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+      <rect x="117" y="428" width="66" height="10" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5"/>
 
-      {/* Corner arcs — top left */}
-      <path d="M 20 28 A 12 12 0 0 1 32 16" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
-      {/* Corner arcs — top right */}
-      <path d="M 268 16 A 12 12 0 0 1 280 28" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
-      {/* Corner arcs — bottom left */}
-      <path d="M 20 412 A 12 12 0 0 0 32 424" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
-      {/* Corner arcs — bottom right */}
-      <path d="M 268 424 A 12 12 0 0 0 280 412" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+      {/* Corner arcs */}
+      <path d="M 18 22 A 12 12 0 0 1 30 10" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+      <path d="M 270 10 A 12 12 0 0 1 282 22" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+      <path d="M 18 418 A 12 12 0 0 0 30 430" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
+      <path d="M 270 430 A 12 12 0 0 0 282 418" fill="none" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
     </svg>
   );
 
