@@ -818,6 +818,18 @@ export default function App() {
 
   const REROLLS = { easy: 3, medium: 1, hard: 0 };
 
+  // Predict tournament outcome based on team rating
+  function getPrediction(rat) {
+    const r = rat || 0;
+    if (r >= 93) return { stage:"🏆 Champions",    detail:"A legendary squad. You should win the whole thing.",        colour:"#F0C040", rank:7 };
+    if (r >= 90) return { stage:"🥈 Final",         detail:"World class. Expect to reach the final at minimum.",        colour:"#C9A227", rank:6 };
+    if (r >= 87) return { stage:"🥉 Semi-Final",    detail:"A strong squad. The semis look very achievable.",           colour:"#C9A227", rank:5 };
+    if (r >= 84) return { stage:"⚽ Quarter-Final", detail:"Solid team. You should make the last eight.",               colour:"#9BA8BC", rank:4 };
+    if (r >= 81) return { stage:"⚽ Round of 16",   detail:"Decent squad. Getting out of the group should be fine.",    colour:"#9BA8BC", rank:3 };
+    if (r >= 78) return { stage:"⚠️ Group Stage",   detail:"Tough ask. You may struggle to qualify from the group.",    colour:"#F87171", rank:2 };
+    return               { stage:"❌ Early Exit",    detail:"This squad will find it very difficult to progress.",       colour:"#F87171", rank:1 };
+  }
+
   // Score a result for leaderboard ranking
   function resultRank(simResult) {
     if (!simResult) return 0;
@@ -1469,7 +1481,7 @@ export default function App() {
                     const pred = getPrediction(teamRat);
                     return (
                       <div className="pred-card" style={{borderColor:pred.colour+"44"}}>
-                        <div className="pred-label">📊 BOOKIES' PREDICTION</div>
+                        <div className="pred-label">📊 BOOKIES&apos; PREDICTION</div>
                         <div className="pred-stage" style={{color:pred.colour}}>{pred.stage}</div>
                         <div className="pred-detail">{pred.detail}</div>
                         {/* Prediction bar */}
@@ -1884,34 +1896,39 @@ export default function App() {
 }
 
 // ─── CONFETTI COMPONENT ───────────────────────────────────────────────────────
-function Confetti() {
-  const pieces = [];
+// Pre-generate confetti data once at module level so it never causes re-renders
+const CONFETTI_DATA = (() => {
   const colours = ["#C9A227","#F0C040","#ffffff","#3DD68C","#F26B6B","#60A5FA","#F5B942","#E879F9"];
-  const count = 120;
-  for (let i = 0; i < count; i++) {
-    const left    = Math.random() * 100;
-    const delay   = Math.random() * 3;
-    const dur     = 2.5 + Math.random() * 2.5;
-    const colour  = colours[Math.floor(Math.random() * colours.length)];
-    const size    = 6 + Math.random() * 8;
-    const isRect  = Math.random() > 0.5;
-    pieces.push(
-      <div
-        key={i}
-        className="confetti-piece"
-        style={{
-          left:`${left}%`,
-          background: colour,
-          width: isRect ? size*1.5 : size,
-          height: size,
-          borderRadius: isRect ? "1px" : "50%",
-          animationDuration:`${dur}s`,
-          animationDelay:`${delay}s`,
-        }}
-      />
-    );
-  }
-  return <div className="confetti-wrap">{pieces}</div>;
+  return Array.from({length:100}, (_,i) => ({
+    left:  Math.random() * 100,
+    delay: Math.random() * 3,
+    dur:   2.5 + Math.random() * 2.5,
+    colour: colours[Math.floor(Math.random() * colours.length)],
+    size:  6 + Math.random() * 8,
+    isRect: Math.random() > 0.5,
+  }));
+})();
+
+function Confetti() {
+  return (
+    <div className="confetti-wrap">
+      {CONFETTI_DATA.map((p,i) => (
+        <div
+          key={i}
+          className="confetti-piece"
+          style={{
+            left:`${p.left}%`,
+            background: p.colour,
+            width: p.isRect ? p.size*1.5 : p.size,
+            height: p.size,
+            borderRadius: p.isRect ? "1px" : "50%",
+            animationDuration:`${p.dur}s`,
+            animationDelay:`${p.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 // ─── PITCH COMPONENT ──────────────────────────────────────────────────────────
