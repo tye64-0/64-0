@@ -1695,7 +1695,7 @@ export default function App() {
                 <div className="pitch-wrap">
                   <div className="pitch-hdr">
                     <div className="pitch-fm">{formation}</div>
-                    {slots.length > 0 && <div style={{textAlign:"right"}}><div className="pitch-rat">{teamRat}</div><div className="pitch-rl">Avg Rating</div></div>}
+                    {slots.length > 0 && !expertMode && <div style={{textAlign:"right"}}><div className="pitch-rat">{teamRat}</div><div className="pitch-rl">Avg Rating</div></div>}
                   </div>
                   <Pitch fSlots={fSlots} slots={activeSlots} openPlayer={openPlayer} onPlace={placeInSlot} expertMode={expertMode} />
                 </div>
@@ -1823,11 +1823,11 @@ export default function App() {
                   })}
                 </div>
                 <div className="sim-wrap">
-                  <div className="sim-rat">{teamRat}</div>
-                  <div className="sim-rl">Team Rating</div>
+                  <div className="sim-rat">{expertMode ? <span style={{fontSize:'2rem',opacity:.4}}>?</span> : teamRat}</div>
+                  <div className="sim-rl">{expertMode ? 'Rating Hidden' : 'Team Rating'}</div>
 
-                  {/* Prediction card */}
-                  {(() => {
+                  {/* Prediction card — hidden in expert mode */}
+                  {!expertMode && (() => {
                     const pred = getPrediction(teamRat);
                     return (
                       <div className="pred-card" style={{borderColor:pred.colour+"44"}}>
