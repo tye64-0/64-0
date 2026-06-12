@@ -411,7 +411,7 @@ const CSS = `
   --gbright:rgba(201,162,39,0.38);
   --txt:#F0F2F8;
   --txt2:#B8BDD0;
-  --muted:#4E5A70;
+  --muted:#8896A8;
   --bdr:rgba(255,255,255,0.09);
   --bdr2:rgba(255,255,255,0.04);
   --grn:#3DD68C;--red:#F26B6B;--yel:#F5B942;
@@ -422,7 +422,7 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 /* NAV */
 .nav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--bdr);background:#0A0F1C;position:sticky;top:0;z-index:50}
 .logo{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.8rem;color:var(--gold);letter-spacing:4px;line-height:1}
-.logo-sub{font-size:.56rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase}
+.logo-sub{font-size:.62rem;color:#9BA8BC;letter-spacing:3px;text-transform:uppercase;font-weight:500}
 .btn-ghost{background:transparent;border:1px solid var(--gdim);color:var(--gold);padding:6px 14px;border-radius:4px;cursor:pointer;font-size:.75rem;font-family:'Inter',sans-serif;transition:all .15s}
 .btn-ghost:hover{background:var(--gdim);border-color:var(--gold)}
 
@@ -438,7 +438,7 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .btn-primary:hover{background:var(--gold-hi);transform:translateY(-1px);box-shadow:0 6px 20px rgba(201,162,39,.25)}
 .hero-stats{display:flex;gap:40px;justify-content:center;margin-top:52px;flex-wrap:wrap;padding-top:40px;border-top:1px solid var(--bdr2)}
 .hs-n{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:2.4rem;color:var(--gold)}
-.hs-l{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:2px}
+.hs-l{font-size:.66rem;letter-spacing:2.5px;text-transform:uppercase;color:#9BA8BC;margin-top:4px;font-weight:500}
 
 /* FORMATION PICKER */
 .fp{text-align:center;padding:52px 20px 80px;background:#0A0F1C;min-height:100vh}
@@ -602,6 +602,17 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .sc-name{flex:1;font-size:.84rem;font-weight:600}
 .sc-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1rem;color:var(--gold)}
 .sc-footer{text-align:center;padding:10px;font-size:.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;border-top:1px solid var(--bdr);background:rgba(0,0,0,.2)}
+/* Head to Head */
+.h2h-turn-banner{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:16px;background:var(--surf);border:1px solid var(--bdr);border-radius:8px;overflow:hidden}
+.h2h-turn-player{flex:1;display:flex;align-items:center;gap:8px;padding:12px 14px;transition:all .2s;opacity:.45}
+.h2h-turn-player.active{opacity:1;background:rgba(201,162,39,.07)}
+.h2h-turn-num{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.75rem;color:var(--gold);background:var(--gdim);padding:2px 6px;border-radius:3px}
+.h2h-turn-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:1rem;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h2h-turn-count{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.9rem;color:var(--muted)}
+.h2h-turn-player.active .h2h-turn-count{color:var(--gold)}
+.h2h-turn-vs{padding:12px 10px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.85rem;color:var(--muted);letter-spacing:1px;border-left:1px solid var(--bdr);border-right:1px solid var(--bdr)}
+.h2h-winner-banner{text-align:center;padding:20px;background:linear-gradient(135deg,rgba(201,162,39,.12),transparent);border:1px solid var(--gdim);border-radius:8px;margin-bottom:4px}
+.h2h-winner-txt{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:2rem;color:var(--gold);margin-top:4px}
 /* Team name input */
 .team-name-input{width:100%;background:var(--surf2);border:1px solid var(--bdr);border-radius:6px;padding:14px 16px;color:var(--txt);font-family:'Inter',sans-serif;font-size:1rem;outline:none;transition:border-color .15s}
 .team-name-input:focus{border-color:var(--gold)}
@@ -766,6 +777,21 @@ export default function App() {
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
 
+  // ── HEAD TO HEAD STATE ──
+  const [h2hMode, setH2hMode] = useState(false);          // are we in h2h mode?
+  const [h2hTurn, setH2hTurn] = useState(1);              // 1 or 2
+  const [h2hSlots1, setH2hSlots1] = useState([]);         // P1 filled slots
+  const [h2hSlots2, setH2hSlots2] = useState([]);         // P2 filled slots
+  const [h2hName1, setH2hName1] = useState("");
+  const [h2hName2, setH2hName2] = useState("");
+  const [h2hUsed1, setH2hUsed1] = useState(new Set());    // global dedup P1
+  const [h2hUsed2, setH2hUsed2] = useState(new Set());    // global dedup P2
+  const [h2hSim1, setH2hSim1] = useState(null);
+  const [h2hSim2, setH2hSim2] = useState(null);
+  const [h2hSimStep, setH2hSimStep] = useState(0);
+  const [h2hMatches1, setH2hMatches1] = useState([]);
+  const [h2hMatches2, setH2hMatches2] = useState([]);
+
   const REROLLS = { easy: 3, medium: 1, hard: 0 };
 
   // Score a result for leaderboard ranking
@@ -845,11 +871,16 @@ export default function App() {
   }
 
   const fSlots = formation ? FORMATIONS[formation] : [];
-  const filledIds = new Set(slots.map(s => s.slotId));
+  // In h2h mode, current turn's slots drive the pitch/draft UI
+  const activeSlots = h2hMode ? (h2hTurn === 1 ? h2hSlots1 : h2hSlots2) : slots;
+  const activeUsed  = h2hMode ? (h2hTurn === 1 ? h2hUsed1  : h2hUsed2)  : usedPlayers;
+  const filledIds = new Set(activeSlots.map(s => s.slotId));
   const openSlots = fSlots.filter(s => !filledIds.has(s.id));
-  const complete = formation && openSlots.length === 0;
+  const complete = !h2hMode && formation && openSlots.length === 0;
   const myPlayers = slots.map(s => s.player);
   const teamRat = myPlayers.length ? Math.round(avgRat(myPlayers)) : 0;
+  const h2hRat1 = h2hSlots1.length ? Math.round(avgRat(h2hSlots1.map(s=>s.player))) : 0;
+  const h2hRat2 = h2hSlots2.length ? Math.round(avgRat(h2hSlots2.map(s=>s.player))) : 0;
 
   function startGame(f, diff) {
     const d = diff || difficulty;
@@ -887,6 +918,7 @@ export default function App() {
   }
 
   function placeInSlot(slot) {
+    if (h2hMode) { h2hPlaceInSlot(slot); return; }
     if (!openPlayer || filledIds.has(slot.id)) return;
     if (!canFill(openPlayer.player.pos, slot.label)) return;
     setSlots(prev => [...prev, { slotId: slot.id, player: openPlayer.player, squadKey: openPlayer.squadKey }]);
@@ -959,6 +991,69 @@ export default function App() {
     setPhase("home"); setDifficulty(null); setFormation(null); setSlots([]); setSpinning(false);
     setSpinDisp(null); setLandedSquad(null); setRerollsLeft(0); setUsedMap({}); setOpenPlayer(null);
     setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false);
+    // reset h2h
+    setH2hMode(false); setH2hTurn(1); setH2hSlots1([]); setH2hSlots2([]);
+    setH2hName1(""); setH2hName2(""); setH2hUsed1(new Set()); setH2hUsed2(new Set());
+    setH2hSim1(null); setH2hSim2(null); setH2hSimStep(0); setH2hMatches1([]); setH2hMatches2([]);
+  }
+
+  function startH2h(f, diff) {
+    setH2hMode(true); setH2hTurn(1); setH2hSlots1([]); setH2hSlots2([]);
+    setH2hUsed1(new Set()); setH2hUsed2(new Set());
+    setH2hSim1(null); setH2hSim2(null);
+    setFormation(f); setDifficulty(diff);
+    setSlots([]); setSpinning(false); setSpinDisp(null);
+    setLandedSquad(null); setRerollsLeft(REROLLS[diff]);
+    setUsedMap({}); setUsedPlayers(new Set());
+    setOpenPlayer(null); setFilter("ALL");
+    setPhase("game");
+  }
+
+  function h2hPlaceInSlot(slot) {
+    if (!openPlayer || !h2hMode) return;
+    const p = openPlayer.player;
+    const sq = openPlayer.squadKey;
+    if (!canFill(p.pos, slot.label)) return;
+    const entry = { slotId: slot.id, player: p, squadKey: sq };
+    if (h2hTurn === 1) {
+      if (h2hSlots1.some(s => s.slotId === slot.id)) return;
+      const newSlots = [...h2hSlots1, entry];
+      setH2hSlots1(newSlots);
+      setH2hUsed1(prev => new Set([...prev, p.name]));
+    } else {
+      if (h2hSlots2.some(s => s.slotId === slot.id)) return;
+      const newSlots = [...h2hSlots2, entry];
+      setH2hSlots2(newSlots);
+      setH2hUsed2(prev => new Set([...prev, p.name]));
+    }
+    setOpenPlayer(null); setLandedSquad(null); setSpinDisp(null);
+    // Switch turn — unless both are full
+    const p1Done = h2hTurn === 1 ? (h2hSlots1.length + 1) >= fSlots.length : h2hSlots1.length >= fSlots.length;
+    const p2Done = h2hTurn === 2 ? (h2hSlots2.length + 1) >= fSlots.length : h2hSlots2.length >= fSlots.length;
+    if (p1Done && p2Done) {
+      // Both complete — go to sim
+      setPhase("h2h-sim");
+    } else {
+      setH2hTurn(t => t === 1 ? 2 : 1);
+      setRerollsLeft(REROLLS[difficulty]);
+    }
+  }
+
+  function runH2hSim() {
+    const players1 = h2hSlots1.map(s => s.player);
+    const players2 = h2hSlots2.map(s => s.player);
+    const full1 = simulate(players1);
+    const full2 = simulate(players2);
+    setH2hSim1(full1); setH2hSim2(full2);
+    const all1 = [...full1.group.map(g=>({kind:"group",data:g})),...full1.rounds.map(r=>({kind:"round",data:r}))];
+    const all2 = [...full2.group.map(g=>({kind:"group",data:g})),...full2.rounds.map(r=>({kind:"round",data:r}))];
+    setH2hMatches1(all1); setH2hMatches2(all2);
+    setH2hSimStep(0);
+    setPhase("h2h-results");
+    const maxLen = Math.max(all1.length, all2.length);
+    for (let i = 0; i <= maxLen; i++) {
+      setTimeout(() => setH2hSimStep(i + 1), (i + 1) * 900);
+    }
   }
 
   const sqPlayers = landedSquad ? SQUADS[landedSquad].players : [];
@@ -1008,7 +1103,10 @@ export default function App() {
           <h1 className="hero-title">64<span>-0</span></h1>
           <p className="hero-desc">Spin the reel. Draft legends from every World Cup era. Build your ultimate XI and simulate the tournament.</p>
           <button className="btn-primary" onClick={() => setPhase("difficulty")}>Start New Run →</button>
-          <div style={{marginTop:14}}>
+          <div style={{marginTop:14,display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+            <button className="btn-ghost" onClick={() => { setH2hName1(""); setH2hName2(""); setDifficulty(null); setFormation(null); setPhase("h2h-setup"); }}>
+              ⚔️ Head to Head
+            </button>
             <button className="btn-ghost" onClick={() => { loadLeaderboard(); setShowLeaderboard(true); setPhase("leaderboard"); }}>
               🏆 Leaderboard
             </button>
@@ -1064,6 +1162,52 @@ export default function App() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* H2H SETUP */}
+      {phase === "h2h-setup" && (
+        <div className="fp">
+          <div className="fp-title">⚔️ Head to Head</div>
+          <div className="fp-sub">Both players draft on the same device, taking turns</div>
+          <div style={{maxWidth:440,margin:"0 auto",display:"flex",flexDirection:"column",gap:14}}>
+            <div>
+              <div style={{fontSize:".7rem",color:"var(--gold)",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Player 1 Name</div>
+              <input className="team-name-input" type="text" placeholder="e.g. Tye" value={h2hName1} maxLength={20} onChange={e=>setH2hName1(e.target.value)} />
+            </div>
+            <div>
+              <div style={{fontSize:".7rem",color:"var(--gold)",letterSpacing:2,textTransform:"uppercase",marginBottom:6}}>Player 2 Name</div>
+              <input className="team-name-input" type="text" placeholder="e.g. Mate" value={h2hName2} maxLength={20} onChange={e=>setH2hName2(e.target.value)} />
+            </div>
+            <div>
+              <div style={{fontSize:".7rem",color:"var(--muted)",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Difficulty</div>
+              <div style={{display:"flex",gap:8}}>
+                {["easy","medium","hard"].map(d=>(
+                  <div key={d} className="fp-card" style={{flex:1,padding:"12px 8px",textAlign:"center",borderColor:difficulty===d?"var(--gold)":"var(--bdr)",background:difficulty===d?"var(--surf3)":"var(--surf)"}} onClick={()=>setDifficulty(d)}>
+                    <div style={{fontSize:"1.3rem"}}>{d==="easy"?"😌":d==="medium"?"😤":"💀"}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1rem",color:difficulty===d?"var(--gold)":"var(--txt)",marginTop:4,textTransform:"capitalize"}}>{d}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:".7rem",color:"var(--muted)",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Formation</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {Object.keys(FORMATIONS).map(f=>(
+                  <div key={f} className="fp-card" style={{flex:1,minWidth:80,padding:"10px 6px",textAlign:"center",borderColor:formation===f?"var(--gold)":"var(--bdr)",background:formation===f?"var(--surf3)":"var(--surf)"}} onClick={()=>setFormation(f)}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:formation===f?"var(--gold)":"var(--txt)"}}>{f}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button
+              className="btn-primary"
+              style={{width:"100%",marginTop:6,opacity:(h2hName1&&h2hName2&&difficulty&&formation)?1:.4,pointerEvents:(h2hName1&&h2hName2&&difficulty&&formation)?"auto":"none"}}
+              onClick={()=>startH2h(formation,difficulty)}
+            >
+              Start Draft →
+            </button>
+          </div>
         </div>
       )}
 
@@ -1140,7 +1284,22 @@ export default function App() {
       {/* GAME */}
       {phase === "game" && formation && (
         <div className="game">
-          <div className="prog-wrap"><div className="prog-bar" style={{width:`${(slots.length/11)*100}%`}}/></div>
+          {h2hMode && (
+            <div className="h2h-turn-banner">
+              <div className={`h2h-turn-player${h2hTurn===1?" active":""}`}>
+                <span className="h2h-turn-num">P1</span>
+                <span className="h2h-turn-name">{h2hName1 || "Player 1"}</span>
+                <span className="h2h-turn-count">{h2hSlots1.length}/11</span>
+              </div>
+              <div className="h2h-turn-vs">VS</div>
+              <div className={`h2h-turn-player${h2hTurn===2?" active":""}`}>
+                <span className="h2h-turn-num">P2</span>
+                <span className="h2h-turn-name">{h2hName2 || "Player 2"}</span>
+                <span className="h2h-turn-count">{h2hSlots2.length}/11</span>
+              </div>
+            </div>
+          )}
+          <div className="prog-wrap"><div className="prog-bar" style={{width:h2hMode?`${((h2hSlots1.length+h2hSlots2.length)/22)*100}%`:`${(slots.length/11)*100}%`}}/></div>
 
           {!complete ? (
             <div className="cols">
@@ -1152,7 +1311,7 @@ export default function App() {
                     <div className="pitch-fm">{formation}</div>
                     {slots.length > 0 && <div style={{textAlign:"right"}}><div className="pitch-rat">{teamRat}</div><div className="pitch-rl">Avg Rating</div></div>}
                   </div>
-                  <Pitch fSlots={fSlots} slots={slots} openPlayer={openPlayer} onPlace={placeInSlot} />
+                  <Pitch fSlots={fSlots} slots={activeSlots} openPlayer={openPlayer} onPlace={placeInSlot} />
                 </div>
               </div>
 
@@ -1196,7 +1355,7 @@ export default function App() {
                     </div>
                     <div className="plist">
                       {filtered.map(p => {
-                        const isUsed = usedSet.has(p.name) || usedPlayers.has(p.name);
+                        const isUsed = usedSet.has(p.name) || activeUsed.has(p.name);
                         const eligSlots = eligibleSlotsFor(p);
                         const fits = eligSlots.length > 0;
                         const isOpen = openPlayer?.player.name === p.name && openPlayer?.squadKey === landedSquad;
@@ -1285,6 +1444,128 @@ export default function App() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* H2H SIM CONFIRM */}
+      {phase === "h2h-sim" && (
+        <div className="fp">
+          <div className="fp-title">⚔️ Both XIs Complete!</div>
+          <div className="fp-sub">Ready to simulate both tournaments simultaneously?</div>
+          <div style={{maxWidth:500,margin:"0 auto",display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:24}}>
+            {[{name:h2hName1||"Player 1",slots:h2hSlots1,rat:h2hRat1},{name:h2hName2||"Player 2",slots:h2hSlots2,rat:h2hRat2}].map((p,pi)=>(
+              <div key={pi} className="rcard">
+                <div className="rch">{p.name}</div>
+                {p.slots.map((s,i)=>{
+                  const sl=fSlots.find(f=>f.id===s.slotId);
+                  return <div key={i} className="xi-row"><span className="xi-slot">{sl?.label}</span><span style={{flex:1,fontSize:".78rem",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.player.name}</span><span className="xi-rat">{s.player.rat}</span></div>;
+                })}
+                <div style={{padding:"8px 14px",borderTop:"1px solid var(--bdr)",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:".65rem",color:"var(--muted)"}}>Avg Rating</span>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"var(--gold)"}}>{p.rat}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button className="btn-primary" style={{display:"block",margin:"0 auto"}} onClick={runH2hSim}>Simulate Both →</button>
+        </div>
+      )}
+
+      {/* H2H RESULTS */}
+      {phase === "h2h-results" && h2hSim1 && h2hSim2 && (
+        <div className="res" style={{maxWidth:760}}>
+          {/* Winner banner */}
+          {h2hSimStep > Math.max(h2hMatches1.length, h2hMatches2.length) && (() => {
+            const r1 = resultRank(h2hSim1), r2 = resultRank(h2hSim2);
+            const rat1 = h2hRat1, rat2 = h2hRat2;
+            const winner = r1>r2?"p1":r2>r1?"p2":rat1>rat2?"p1":rat2>rat1?"p2":"draw";
+            return (
+              <div className="h2h-winner-banner" style={{animation:"fadeSlideIn .6s ease"}}>
+                {winner==="draw"
+                  ? <><div style={{fontSize:"2rem"}}>🤝</div><div className="h2h-winner-txt">It's a Draw!</div></>
+                  : <><div style={{fontSize:"2rem"}}>🏆</div><div className="h2h-winner-txt">{winner==="p1"?h2hName1||"Player 1":h2hName2||"Player 2"} Wins!</div></>
+                }
+              </div>
+            );
+          })()}
+
+          {/* Side by side columns */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16}}>
+            {[
+              {name:h2hName1||"P1",sim:h2hSim1,matches:h2hMatches1,slots:h2hSlots1,rat:h2hRat1,idx:0},
+              {name:h2hName2||"P2",sim:h2hSim2,matches:h2hMatches2,slots:h2hSlots2,rat:h2hRat2,idx:1},
+            ].map(p => (
+              <div key={p.idx}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"var(--gold)",marginBottom:4,textAlign:"center"}}>{p.name}</div>
+                <div style={{fontSize:".72rem",color:"var(--muted)",textAlign:"center",marginBottom:10}}>
+                  {p.sim.W}W {p.sim.D}D {p.sim.L}L · Rat {p.rat}
+                </div>
+
+                {/* Group */}
+                <div className="rcard" style={{marginBottom:8}}>
+                  <div className="rch">Group</div>
+                  {p.sim.group.map((g,i)=>{
+                    const matchIdx = p.idx===0 ? i : i;
+                    const revealed = h2hSimStep > i;
+                    return (
+                      <div key={i} className={`mr sim-row${revealed?" revealed":""}`} style={{padding:"8px 10px",gap:6}}>
+                        <div style={{flex:1,fontSize:".75rem",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.name}</div>
+                        {revealed
+                          ? <><div className={`mr-s ${g.out}`} style={{fontSize:"1rem",minWidth:40,animation:"popIn .3s ease"}}>{g.ga}–{g.gb}</div><span className={`mr-b ${g.out}`}>{g.out}</span></>
+                          : <><div className="mr-s pending" style={{fontSize:".78rem",minWidth:40}}>vs</div>{h2hSimStep===i&&<span className="dot-pulse"><i/><i/><i/></span>}</>
+                        }
+                      </div>
+                    );
+                  })}
+                  {h2hSimStep >= 3 && (()=>{
+                    const pts=p.sim.group.reduce((s,g)=>s+(g.out==="W"?3:g.out==="D"?1:0),0);
+                    return <div style={{padding:"5px 10px",borderTop:"1px solid var(--bdr2)",fontSize:".68rem",color:pts>=4?"var(--grn)":"var(--red)",fontWeight:700}}>{pts} pts — {pts>=4?"✓ Through":"✗ Out"}</div>;
+                  })()}
+                </div>
+
+                {/* Knockout */}
+                {p.sim.rounds.length>0 && h2hSimStep>3 && (
+                  <div className="rcard" style={{animation:"fadeSlideIn .4s ease"}}>
+                    <div className="rch">Knockout</div>
+                    {p.sim.rounds.map((r,i)=>{
+                      const mi=3+i;
+                      const revealed=h2hSimStep>mi;
+                      return (
+                        <div key={i}>
+                          <div className="stage-lbl" style={{padding:"5px 10px 1px",fontSize:".55rem"}}>{r.stage}</div>
+                          <div className={`mr sim-row${revealed?" revealed":""}`} style={{padding:"7px 10px",gap:6}}>
+                            <div style={{flex:1,fontSize:".75rem",fontWeight:700}}>{p.name}</div>
+                            {revealed
+                              ? <><div className={`mr-s ${r.won?"W":"L"}`} style={{fontSize:"1rem",minWidth:40,animation:"popIn .3s ease"}}>{r.ga}–{r.gb}</div><span className={`mr-b ${r.won?"W":"L"}`}>{r.won?"W":"L"}</span></>
+                              : <><div className="mr-s pending" style={{fontSize:".78rem",minWidth:40}}>vs</div>{h2hSimStep===mi&&<span className="dot-pulse"><i/><i/><i/></span>}</>
+                            }
+                          </div>
+                          {revealed&&r.pens&&<div className="mr-pens" style={{padding:"2px 10px 5px",fontSize:".6rem"}}>{r.pens}</div>}
+                        </div>
+                      );
+                    })}
+                    {h2hSimStep>=Math.max(h2hMatches1.length,h2hMatches2.length)&&p.sim.champion&&(
+                      <div style={{textAlign:"center",padding:"12px",borderTop:"1px solid var(--gdim)",animation:"fadeSlideIn .5s ease"}}>
+                        <div style={{fontSize:"1.8rem"}}>🏆</div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"var(--gold)"}}>Champions</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Final result pill */}
+                {h2hSimStep>=Math.max(h2hMatches1.length,h2hMatches2.length)&&(
+                  <div style={{textAlign:"center",marginTop:8,fontSize:".8rem",color:p.sim.champion?"var(--gold)":resultRank(p.sim)>=5?"var(--grn)":"var(--muted)",fontWeight:700,animation:"fadeSlideIn .4s ease"}}>
+                    {resultLabel(p.sim)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div style={{textAlign:"center",marginTop:24}}>
+            <button className="btn-primary" onClick={restart}>Play Again →</button>
+          </div>
         </div>
       )}
 
@@ -1575,3 +1856,4 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
     </div>
   );
 }
+
