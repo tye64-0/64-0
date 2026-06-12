@@ -1582,7 +1582,7 @@ export default function App() {
                     <div className="pitch-fm">{formation}</div>
                     {slots.length > 0 && <div style={{textAlign:"right"}}><div className="pitch-rat">{teamRat}</div><div className="pitch-rl">Avg Rating</div></div>}
                   </div>
-                  <Pitch fSlots={fSlots} slots={activeSlots} openPlayer={openPlayer} onPlace={placeInSlot} />
+                  <Pitch fSlots={fSlots} slots={activeSlots} openPlayer={openPlayer} onPlace={placeInSlot} expertMode={expertMode} />
                 </div>
               </div>
 
@@ -1690,7 +1690,7 @@ export default function App() {
                     <div className="pitch-fm">{formation}</div>
                     <div style={{textAlign:"right"}}><div className="pitch-rat">{teamRat}</div><div className="pitch-rl">Team Rating</div></div>
                   </div>
-                  <Pitch fSlots={fSlots} slots={slots} openPlayer={null} onPlace={() => {}} />
+                  <Pitch fSlots={fSlots} slots={slots} openPlayer={null} onPlace={() => {}} expertMode={expertMode} />
                 </div>
               </div>
               <div>
@@ -2216,7 +2216,7 @@ function Confetti() {
 const COL_X = { 1:12, 2:30, 3:50, 4:70, 5:88 };
 const ROW_Y = { 1:8.3, 2:25, 3:41.7, 4:58.3, 5:75, 6:91.7 };
 
-function Pitch({ fSlots, slots, openPlayer, onPlace }) {
+function Pitch({ fSlots, slots, openPlayer, onPlace, expertMode }) {
   const filledMap = {};
   slots.forEach(s => { filledMap[s.slotId] = s; });
 
