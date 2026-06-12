@@ -563,6 +563,15 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .xi-name{flex:1;font-size:.84rem;font-weight:600}
 .xi-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.05rem;color:var(--gold)}
 .sim-wrap{text-align:center;padding:24px 0 4px}
+.pred-card{background:var(--surf3);border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:16px;margin:16px 0 0;text-align:center}
+.pred-label{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.pred-stage{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.6rem;margin-bottom:4px;line-height:1}
+.pred-detail{font-size:.78rem;color:var(--txt2);margin-bottom:14px;line-height:1.5}
+.pred-bar-wrap{display:flex;gap:3px;height:6px;border-radius:3px;overflow:hidden;margin-bottom:5px}
+.pred-bar-seg{flex:1;background:var(--surf);border-radius:2px;transition:background .3s}
+.pred-bar-labels{display:flex;gap:3px}
+.pred-bar-lbl{flex:1;font-size:.48rem;color:var(--muted);text-align:center;letter-spacing:.5px}
+.pred-outcome{font-size:.82rem;font-weight:600;margin-bottom:6px;padding:8px 12px;background:var(--surf2);border-radius:5px;border:1px solid var(--bdr)}
 .sim-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:3.4rem;color:var(--gold);line-height:1}
 .sim-rl{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:4px;margin-bottom:20px}
 .btn-sim{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#05080F;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.2rem;letter-spacing:2px;padding:14px 48px;border:none;cursor:pointer;border-radius:4px;transition:all .18s;text-transform:uppercase}
@@ -1446,7 +1455,35 @@ export default function App() {
                 <div className="sim-wrap">
                   <div className="sim-rat">{teamRat}</div>
                   <div className="sim-rl">Team Rating</div>
-                  <button className="btn-sim" onClick={runSim}>Simulate Tournament →</button>
+
+                  {/* Prediction card */}
+                  {(() => {
+                    const pred = getPrediction(teamRat);
+                    return (
+                      <div className="pred-card" style={{borderColor:pred.colour+"44"}}>
+                        <div className="pred-label">📊 BOOKIES' PREDICTION</div>
+                        <div className="pred-stage" style={{color:pred.colour}}>{pred.stage}</div>
+                        <div className="pred-detail">{pred.detail}</div>
+                        {/* Prediction bar */}
+                        <div className="pred-bar-wrap">
+                          {["Group","R16","QF","SF","Final","🏆"].map((s,i) => (
+                            <div key={i} className={`pred-bar-seg${i < pred.rank ? " lit" : ""}`}
+                              style={{background: i < pred.rank ? pred.colour : undefined}}
+                            />
+                          ))}
+                        </div>
+                        <div className="pred-bar-labels">
+                          {["Group","R16","QF","SF","Final","🏆"].map((s,i) => (
+                            <span key={i} className="pred-bar-lbl">{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <button className="btn-sim" onClick={runSim} style={{marginTop:20}}>
+                    Simulate Tournament →
+                  </button>
                 </div>
               </div>
             </div>
@@ -1587,6 +1624,19 @@ export default function App() {
           ) : (
             <div className="res-stage" style={{color:"var(--muted)"}}>Simulating…</div>
           )}
+          {simStep >= simMatches.length && (() => {
+            const pred = getPrediction(teamRat);
+            const actual = resultRank(simFull);
+            const beat = actual > pred.rank;
+            const matched = actual === pred.rank;
+            return (
+              <div className="pred-outcome" style={{animation:"fadeSlideIn .5s ease"}}>
+                {beat    && <span style={{color:"var(--grn)"}}>✓ Beat the prediction! We predicted {pred.stage}</span>}
+                {matched && <span style={{color:"var(--gold)"}}>= Matched the prediction — exactly as expected</span>}
+                {!beat && !matched && <span style={{color:"var(--red)"}}>✗ Fell short — we predicted {pred.stage}</span>}
+              </div>
+            );
+          })()}
           <div className="res-stage-name">{teamName || "Your XI"}</div>
           <div className="res-sub">
             Team Rating: {teamRat} · {formation} · {difficulty}
