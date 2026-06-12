@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 // ─── SQUAD DATA ────────────────────────────────────────────────────────────────
 const SQUADS_RAW = {
@@ -845,7 +845,11 @@ export default function App() {
   // Commentary: per-match events {minute, type, playerName}
   const [matchEvents, setMatchEvents] = useState({});    // {matchIdx: [{min,type,name}]}
   const [activeMatchIdx, setActiveMatchIdx] = useState(-1);
-  const [liveEvents, setLiveEvents] = useState([]);      // events revealed so far
+  const [liveEvents, setLiveEvents] = useState([]);      // events for the ACTIVE match (resets each match)
+  const [pinnedEvents, setPinnedEvents] = useState({});  // {matchIdx: events[]} — stays after match ends
+  const [liveScore, setLiveScore] = useState({ga:0,gb:0}); // counts up during match
+  const [simSkipped, setSimSkipped] = useState(false);
+  const simTimeouts = React.useRef([]);
   const [personalBests, setPersonalBests] = useState(() => {
     try { return JSON.parse(localStorage.getItem("64-0-pb") || "null") || { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
     catch(e) { return { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
@@ -1064,21 +1068,54 @@ export default function App() {
     setShareCardVisible(false);
     setShareCopied(false);
     setPhase("results");
+    // Store timeouts so skip can clear them
+    simTimeouts.current.forEach(clearTimeout);
+    simTimeouts.current = [];
+
+    // Build a flat timeline of all events across all matches
+    // Each match: show opponent name first, then count up goals, then lock result
+    let cursor = 600; // ms from now
+    const GOAL_DELAY = 500;   // ms between goal events within a match
+    const MATCH_GAP  = 900;   // ms pause between matches
+
     allMatches.forEach((_, i) => {
-      // Reveal match result
-      setTimeout(() => {
-        setSimStep(i + 1);
+      const evts = (full.allEvents || {})[i] || [];
+      const matchResult = i < full.group.length ? full.group[i] : full.rounds[i - full.group.length];
+
+      // Start this match — show 0-0
+      const t0 = cursor;
+      simTimeouts.current.push(setTimeout(() => {
         setActiveMatchIdx(i);
         setLiveEvents([]);
-        // Reveal events for this match one by one over 1.2s each
-        const evts = (full.allEvents || {})[i] || [];
-        evts.forEach((evt, ei) => {
-          setTimeout(() => setLiveEvents(prev => [...prev, evt]), (ei + 1) * 350);
-        });
-      }, (i + 1) * 1400);
+        setLiveScore({ga:0, gb:0});
+      }, t0));
+      cursor += 400;
+
+      // Reveal each goal event, counting up the score
+      evts.forEach((evt, ei) => {
+        const t = cursor;
+        simTimeouts.current.push(setTimeout(() => {
+          setLiveEvents(prev => [...prev, evt]);
+          setLiveScore(prev => ({
+            ga: prev.ga + (evt.type === "goal" ? 1 : 0),
+            gb: prev.gb + (evt.type === "opp_goal" ? 1 : 0),
+          }));
+        }, t));
+        cursor += GOAL_DELAY;
+      });
+
+      // Lock the match result — reveal final score + W/D/L badge, pin events
+      const tEnd = cursor + 300;
+      simTimeouts.current.push(setTimeout(() => {
+        setSimStep(i + 1);
+        setPinnedEvents(prev => ({...prev, [i]: evts}));
+        setLiveEvents([]);
+      }, tEnd));
+      cursor = tEnd + MATCH_GAP;
     });
-    // Clear active match after last one
-    setTimeout(() => setActiveMatchIdx(-1), (allMatches.length + 1) * 1400);
+
+    // Final cleanup
+    simTimeouts.current.push(setTimeout(() => setActiveMatchIdx(-1), cursor));
     // Auto-submit to leaderboard once simulation completes
     const totalDelay = allMatches.length * 900 + 400;
     setTimeout(async () => {
@@ -1155,10 +1192,28 @@ export default function App() {
       } catch(e) {}
     }, totalDelay);
   }
+  function skipSimulation() {
+    // Clear all pending timeouts
+    simTimeouts.current.forEach(clearTimeout);
+    simTimeouts.current = [];
+    // Jump to full reveal
+    if (simFull) {
+      const total = simFull.group.length + simFull.rounds.length;
+      setSimStep(total);
+      setActiveMatchIdx(-1);
+      setLiveEvents([]);
+      // Pin all events
+      const allPinned = {};
+      Object.entries(simFull.allEvents || {}).forEach(([k,v]) => { allPinned[k] = v; });
+      setPinnedEvents(allPinned);
+      setSimSkipped(true);
+    }
+  }
+
   function restart() {
     setPhase("home"); setDifficulty(null); setFormation(null); setSlots([]); setSpinning(false);
     setSpinDisp(null); setLandedSquad(null); setRerollsLeft(0); setUsedMap({}); setOpenPlayer(null);
-    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false); setIsNewPB(false); setShowMyStats(false); setEraFilter('all'); setExpertMode(false); setSummaryText(''); setMatchEvents({}); setLiveEvents([]); setActiveMatchIdx(-1);
+    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false); setIsNewPB(false); setShowMyStats(false); setEraFilter('all'); setExpertMode(false); setSummaryText(''); setMatchEvents({}); setLiveEvents([]); setPinnedEvents({}); setLiveScore({ga:0,gb:0}); setActiveMatchIdx(-1); setSimSkipped(false);
     // reset h2h
     setH2hMode(false); setH2hTurn(1); setH2hSlots1([]); setH2hSlots2([]);
     setH2hName1(""); setH2hName2(""); setH2hUsed1(new Set()); setH2hUsed2(new Set());
@@ -1911,34 +1966,53 @@ export default function App() {
             </span>}
           </div>
 
+          {/* SKIP BUTTON — visible while simulating */}
+          {simStep < simMatches.length && !simSkipped && (
+            <div style={{textAlign:"right",marginBottom:8}}>
+              <button onClick={skipSimulation} style={{background:"transparent",border:"1px solid var(--bdr)",color:"var(--muted)",padding:"4px 12px",borderRadius:4,cursor:"pointer",fontSize:".7rem",letterSpacing:1,textTransform:"uppercase",fontFamily:"'Inter',sans-serif"}}>
+                Skip →
+              </button>
+            </div>
+          )}
+
           {/* GROUP STAGE */}
           <div className="rcard">
             <div className="rch">Group Stage</div>
             {simFull.group.map((g,i) => {
               const revealed = simStep > i;
-              const active   = simStep === i;
+              const active   = activeMatchIdx === i;
+              const eventsToShow = active ? liveEvents : (pinnedEvents[i] || []);
+              // Live score: count up during active match, show final when revealed
+              const displayScore = active
+                ? `${liveScore.ga}–${liveScore.gb}`
+                : revealed ? `${g.ga}–${g.gb}` : null;
               return (
                 <div key={i}>
                   <div className={`mr sim-row${revealed?" revealed":""}${active?" active":""}`}>
                     <div className="mr-t" style={{fontWeight:700}}>Your XI</div>
-                    {revealed ? (
+                    {(revealed || active) ? (
                       <>
-                        <div className={`mr-s ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.ga}–{g.gb}</div>
+                        <div className={`mr-s${revealed?" "+g.out:""}`} style={{animation:revealed?"popIn .3s ease":"none",minWidth:48,textAlign:"center"}}>
+                          {displayScore}
+                        </div>
                         <div className="mr-t" style={{textAlign:"right"}}>{g.opp.flag} {g.opp.key}</div>
-                        <span className={`mr-b ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.out}</span>
+                        {revealed
+                          ? <span className={`mr-b ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.out}</span>
+                          : <span className="mr-b pending" style={{minWidth:28}}><span className="dot-pulse"><i/><i/><i/></span></span>
+                        }
                       </>
                     ) : (
                       <>
                         <div className="mr-s pending">vs</div>
                         <div className="mr-t" style={{textAlign:"right",color:"var(--muted)"}}>{g.opp.flag} {g.opp.key}</div>
-                        <span className="mr-b pending" style={{minWidth:28}}>{active ? <span className="dot-pulse"><i/><i/><i/></span> : ""}</span>
+                        <span className="mr-b pending" style={{minWidth:28}}/>
                       </>
                     )}
                   </div>
-                  {liveEvents.length > 0 && activeMatchIdx === i && (
+                  {eventsToShow.length > 0 && (
                     <div className="commentary-wrap">
-                      {liveEvents.map((evt,ei) => (
-                        <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:"fadeSlideIn .25s ease"}}>
+                      {eventsToShow.map((evt,ei) => (
+                        <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:active?"fadeSlideIn .25s ease":"none"}}>
                           <span className="comm-min">{evt.min}&apos;</span>
                           <span className="comm-icon">⚽</span>
                           <span className="comm-name">{evt.type==="goal" ? evt.name.split(" ").slice(-1)[0] : evt.name}</span>
@@ -1950,14 +2024,13 @@ export default function App() {
                 </div>
               );
             })}
-            {/* Group points tally — show once group done */}
             {simStep >= 3 && (() => {
               const pts = simFull.group.reduce((s,g)=>s+(g.out==="W"?3:g.out==="D"?1:0),0);
               const qualified = pts >= 4;
               return (
                 <div style={{padding:"8px 14px",borderTop:"1px solid var(--bdr2)",display:"flex",alignItems:"center",justifyContent:"space-between",animation:"fadeSlideIn .4s ease"}}>
                   <span style={{fontSize:".72rem",color:"var(--muted)"}}>Group points</span>
-                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color: qualified ? "var(--grn)" : "var(--red)"}}>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:qualified?"var(--grn)":"var(--red)"}}>
                     {pts} pts — {qualified ? "✓ Qualified" : "✗ Eliminated"}
                   </span>
                 </div>
@@ -1978,32 +2051,41 @@ export default function App() {
                     <div className="stage-lbl">{r.stage}</div>
                     <div className={`mr sim-row${revealed?" revealed":""}${active?" active":""}`}>
                       <div className="mr-t" style={{fontWeight:700}}>Your XI</div>
-                      {revealed ? (
+                      {(revealed || active) ? (
                         <>
-                          <div className={`mr-s ${r.won?"W":"L"}`} style={{animation:"popIn .3s ease"}}>{r.ga}–{r.gb}</div>
+                          <div className={`mr-s${revealed?" "+(r.won?"W":"L"):""}`} style={{animation:revealed?"popIn .3s ease":"none",minWidth:48,textAlign:"center"}}>
+                            {active ? `${liveScore.ga}–${liveScore.gb}` : `${r.ga}–${r.gb}`}
+                          </div>
                           <div className="mr-t" style={{textAlign:"right"}}>{r.opp.flag} {r.opp.key}</div>
-                          <span className={`mr-b ${r.won?"W":"L"}`} style={{animation:"popIn .3s ease"}}>{r.won?"W":"L"}</span>
+                          {revealed
+                            ? <span className={`mr-b ${r.won?"W":"L"}`} style={{animation:"popIn .3s ease"}}>{r.won?"W":"L"}</span>
+                            : <span className="mr-b pending" style={{minWidth:28}}><span className="dot-pulse"><i/><i/><i/></span></span>
+                          }
                         </>
                       ) : (
                         <>
                           <div className="mr-s pending">vs</div>
                           <div className="mr-t" style={{textAlign:"right",color:"var(--muted)"}}>{r.opp.flag} {r.opp.key}</div>
-                          <span className="mr-b pending" style={{minWidth:28}}>{active ? <span className="dot-pulse"><i/><i/><i/></span> : ""}</span>
+                          <span className="mr-b pending" style={{minWidth:28}}/>
                         </>
                       )}
                     </div>
-                    {liveEvents.length > 0 && activeMatchIdx === (3+i) && (
-                      <div className="commentary-wrap">
-                        {liveEvents.map((evt,ei) => (
-                          <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:"fadeSlideIn .25s ease"}}>
-                            <span className="comm-min">{evt.min}&apos;</span>
-                            <span className="comm-icon">⚽</span>
-                            <span className="comm-name">{evt.type==="goal" ? evt.name.split(" ").slice(-1)[0] : evt.name}</span>
-                            {evt.type==="opp_goal" && <span style={{fontSize:".6rem",color:"var(--muted)",marginLeft:4}}>(opp)</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {(() => {
+                      const mi = 3 + i;
+                      const koEvts = activeMatchIdx === mi ? liveEvents : (pinnedEvents[mi] || []);
+                      return koEvts.length > 0 ? (
+                        <div className="commentary-wrap">
+                          {koEvts.map((evt,ei) => (
+                            <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:activeMatchIdx===mi?"fadeSlideIn .25s ease":"none"}}>
+                              <span className="comm-min">{evt.min}&apos;</span>
+                              <span className="comm-icon">⚽</span>
+                              <span className="comm-name">{evt.type==="goal" ? evt.name.split(" ").slice(-1)[0] : evt.name}</span>
+                              {evt.type==="opp_goal" && <span style={{fontSize:".6rem",color:"var(--muted)",marginLeft:4}}>(opp)</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                     {revealed && r.pens && <div className="mr-pens" style={{animation:"fadeSlideIn .3s ease"}}>{r.pens}</div>}
                   </div>
                 );
