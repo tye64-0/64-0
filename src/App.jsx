@@ -357,20 +357,49 @@ function distributeStats(players, goalsScored, conceded, stats) {
   }
 }
 
-function simulate(myPlayers) {
-  const myR = avgRat(myPlayers);
-  const opp7 = [...SQUAD_KEYS].sort(()=>Math.random()-.5).slice(0,7).map(k=>({key:k,flag:SQUADS[k].flag,r:avgRat(SQUADS[k].players)}));
-  const playerStats = {}; // {name: {goals, assists, cleanSheets}}
+// Generate realistic match minute events for commentary
+function generateEvents(myPlayers, ga, gb, oppKey) {
+  const events = [];
+  const fwd = myPlayers.filter(p => ["ST","CF","RW","LW","CAM","RM","LM","RST","LST"].includes(p.pos));
+  const allP = myPlayers.length ? myPlayers : [];
+  const scorers = [...fwd, ...allP].filter((p,i,a)=>a.findIndex(x=>x.name===p.name)===i);
 
-  const group = opp7.slice(0,3).map(opp=>{
+  // My goals
+  const usedMins = new Set();
+  for(let g=0;g<ga;g++){
+    let min;
+    do { min = 1+Math.floor(Math.random()*93); } while(usedMins.has(min));
+    usedMins.add(min);
+    const scorer = scorers[Math.floor(Math.random()*scorers.length)] || allP[0];
+    events.push({min, type:"goal", name:scorer?.name || "Unknown", own:false});
+  }
+  // Opp goals
+  for(let g=0;g<gb;g++){
+    let min;
+    do { min = 1+Math.floor(Math.random()*93); } while(usedMins.has(min));
+    usedMins.add(min);
+    events.push({min, type:"opp_goal", name:oppKey, own:false});
+  }
+  return events.sort((a,b)=>a.min-b.min);
+}
+
+function simulate(myPlayers, availSquads) {
+  const sq = availSquads || SQUAD_KEYS;
+  const myR = avgRat(myPlayers);
+  const opp7 = [...sq].sort(()=>Math.random()-.5).slice(0,7).map(k=>({key:k,flag:SQUADS[k].flag,r:avgRat(SQUADS[k].players)}));
+  const playerStats = {};
+  const allEvents = {}; // matchIdx → events array
+
+  const group = opp7.slice(0,3).map((opp,i)=>{
     const {ga,gb}=simMatch(myR,opp.r);
     distributeStats(myPlayers, ga, gb, playerStats);
+    allEvents[i] = generateEvents(myPlayers, ga, gb, opp.key);
     return {opp,ga,gb,out:ga>gb?"W":ga===gb?"D":"L"};
   });
   const pts = group.reduce((s,g)=>s+(g.out==="W"?3:g.out==="D"?1:0),0);
   if(pts<4){
     const W2=group.filter(m=>m.out==="W").length, D2=group.filter(m=>m.out==="D").length, L2=group.filter(m=>m.out==="L").length;
-    return {elim:"Group Stage",group,rounds:[],playerStats,W:W2,D:D2,L:L2};
+    return {elim:'Group Stage',group,rounds:[],playerStats,W:W2,D:D2,L:L2,allEvents};
   }
 
   const stages=["Round of 16","Quarter-Final","Semi-Final","Final"]; const rounds=[];
@@ -379,20 +408,21 @@ function simulate(myPlayers) {
     let won=ga>gb; let pens=null;
     if(ga===gb){won=Math.random()>.48;pens=won?"Won on penalties":"Lost on penalties";}
     distributeStats(myPlayers, ga, gb, playerStats);
+    allEvents[3+i] = generateEvents(myPlayers, ga, gb, opp.key);
     rounds.push({stage:stages[i],opp,ga,gb,pens,won});
     if(!won){
       const allM=[...group,...rounds];
       const Wx=allM.filter(m=>m.out==="W"||m.won===true).length;
       const Dx=allM.filter(m=>m.out==="D").length;
       const Lx=allM.filter(m=>m.out==="L"||m.won===false).length;
-      return {elim:stages[i],group,rounds,playerStats,W:Wx,D:Dx,L:Lx};
+      return {elim:stages[i],group,rounds,playerStats,W:Wx,D:Dx,L:Lx,allEvents};
     }
   }
   const allGs = [...group, ...rounds];
   const W = allGs.filter(m=>(m.out||"")+"" === "W" || m.won===true).length;
   const D = allGs.filter(m=>(m.out||"")+"" === "D").length;
   const L = allGs.filter(m=>(m.out||"")+"" === "L" || m.won===false).length;
-  return {elim:null,group,rounds,champion:true,playerStats,W,D,L};
+  return {elim:null,group,rounds,champion:true,playerStats,W,D,L,allEvents};
 }
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -564,6 +594,14 @@ html,body,#root{background:#0A0F1C!important;color:var(--txt);font-family:'Inter
 .xi-rat{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.05rem;color:var(--gold)}
 .sim-wrap{text-align:center;padding:24px 0 4px}
 .pred-card{background:var(--surf3);border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:16px;margin:16px 0 0;text-align:center}
+/* Live commentary */
+.commentary-wrap{padding:5px 14px 8px;display:flex;flex-wrap:wrap;gap:5px}
+.commentary-evt{display:inline-flex;align-items:center;gap:4px;background:rgba(61,214,140,.08);border:1px solid rgba(61,214,140,.18);border-radius:4px;padding:3px 8px;font-size:.72rem}
+.commentary-evt.opp{background:rgba(242,107,107,.08);border-color:rgba(242,107,107,.18)}
+.comm-min{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:.78rem;color:var(--gold)}
+.comm-icon{font-size:.7rem}
+.comm-name{font-weight:600;color:var(--txt)}
+.commentary-evt.opp .comm-name{color:var(--muted)}
 .pred-label{font-size:.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .pred-stage{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:1.6rem;margin-bottom:4px;line-height:1}
 .pred-detail{font-size:.78rem;color:var(--txt2);margin-bottom:14px;line-height:1.5}
@@ -800,6 +838,14 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [eraFilter, setEraFilter] = useState("all");     // all|classic|golden|modern
+  const [expertMode, setExpertMode] = useState(false);   // hide ratings during draft
+  const [summaryText, setSummaryText] = useState("");     // AI generated summary
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  // Commentary: per-match events {minute, type, playerName}
+  const [matchEvents, setMatchEvents] = useState({});    // {matchIdx: [{min,type,name}]}
+  const [activeMatchIdx, setActiveMatchIdx] = useState(-1);
+  const [liveEvents, setLiveEvents] = useState([]);      // events revealed so far
   const [personalBests, setPersonalBests] = useState(() => {
     try { return JSON.parse(localStorage.getItem("64-0-pb") || "null") || { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
     catch(e) { return { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
@@ -822,7 +868,22 @@ export default function App() {
   const [h2hMatches1, setH2hMatches1] = useState([]);
   const [h2hMatches2, setH2hMatches2] = useState([]);
 
-  const REROLLS = { easy: 3, medium: 1, hard: 0 };
+  const REROLLS = { easy: 3, medium: 1, hard: 0, expert: 0 };
+
+  // Era filter — which squads are available to spin
+  const ERA_RANGES = {
+    all:     [1966, 2026],
+    classic: [1966, 1990],
+    golden:  [1994, 2006],
+    modern:  [2010, 2026],
+  };
+  const availableSquads = eraFilter === "all"
+    ? SQUAD_KEYS
+    : SQUAD_KEYS.filter(k => {
+        const yr = SQUADS[k].yr;
+        const [min, max] = ERA_RANGES[eraFilter] || [1966, 2026];
+        return yr >= min && yr <= max;
+      });
 
   // Predict tournament outcome based on team rating
   function getPrediction(rat) {
@@ -944,7 +1005,7 @@ export default function App() {
       t++;
       if (t >= total) {
         clearInterval(iv);
-        const landed = SQUAD_KEYS[Math.floor(Math.random() * SQUAD_KEYS.length)];
+        const landed = availableSquads[Math.floor(Math.random() * availableSquads.length)];
         setSpinDisp(landed); setLandedSquad(landed); setSpinning(false);
       }
     }, 75);
@@ -981,14 +1042,14 @@ export default function App() {
       t++;
       if (t >= total) {
         clearInterval(iv);
-        const landed = SQUAD_KEYS[Math.floor(Math.random() * SQUAD_KEYS.length)];
+        const landed = availableSquads[Math.floor(Math.random() * availableSquads.length)];
         setSpinDisp(landed); setLandedSquad(landed); setSpinning(false);
       }
     }, 75);
   }
 
   function runSim() {
-    const full = simulate(myPlayers);
+    const full = simulate(myPlayers, availableSquads);
     const allMatches = [
       ...full.group.map(g => ({ kind:"group", data:g })),
       ...full.rounds.map(r => ({ kind:"round",  data:r })),
@@ -996,13 +1057,28 @@ export default function App() {
     setSimStep(0);
     setSimMatches(allMatches);
     setSimFull(full);
+    setMatchEvents(full.allEvents || {});
+    setLiveEvents([]);
+    setActiveMatchIdx(-1);
     setScoreSubmitted(false);
     setShareCardVisible(false);
     setShareCopied(false);
     setPhase("results");
     allMatches.forEach((_, i) => {
-      setTimeout(() => setSimStep(i + 1), (i + 1) * 900);
+      // Reveal match result
+      setTimeout(() => {
+        setSimStep(i + 1);
+        setActiveMatchIdx(i);
+        setLiveEvents([]);
+        // Reveal events for this match one by one over 1.2s each
+        const evts = (full.allEvents || {})[i] || [];
+        evts.forEach((evt, ei) => {
+          setTimeout(() => setLiveEvents(prev => [...prev, evt]), (ei + 1) * 350);
+        });
+      }, (i + 1) * 1400);
     });
+    // Clear active match after last one
+    setTimeout(() => setActiveMatchIdx(-1), (allMatches.length + 1) * 1400);
     // Auto-submit to leaderboard once simulation completes
     const totalDelay = allMatches.length * 900 + 400;
     setTimeout(async () => {
@@ -1027,6 +1103,31 @@ export default function App() {
         setLeaderboard(board);
         setScoreSubmitted(true);
       } catch(e) {}
+
+      // Generate AI season summary
+      setSummaryLoading(true);
+      try {
+        const topScorer = Object.entries(full.playerStats || {})
+          .sort((a,b) => b[1].goals - a[1].goals)[0];
+        const resultStr = full.champion ? "won the World Cup" : `were eliminated in the ${full.elim}`;
+        const wdl = `${full.W}W ${full.D}D ${full.L}L`;
+        const rat = myPlayers.length ? Math.round(avgRat(myPlayers)) : 0;
+        const topNames = myPlayers.slice(0,3).map(p=>p.name).join(", ");
+        const prompt = `Write a punchy 2-sentence football tournament summary for a World Cup draft game. The team was rated ${rat}/100, had key players including ${topNames}. They ${resultStr} with a record of ${wdl}.${topScorer ? ` Top scorer was ${topScorer[0]} with ${topScorer[1].goals} goals.` : ""} Write it like a dramatic sports journalist. Start with the team's journey, end with the key moment. No hashtags, no emojis, under 60 words.`;
+        const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            model:"claude-sonnet-4-6",
+            max_tokens:120,
+            messages:[{role:"user",content:prompt}]
+          })
+        });
+        const data = await resp.json();
+        const txt = data.content?.[0]?.text || "";
+        setSummaryText(txt);
+      } catch(e) { setSummaryText(""); }
+      setSummaryLoading(false);
 
       // Save personal best to localStorage
       try {
@@ -1057,7 +1158,7 @@ export default function App() {
   function restart() {
     setPhase("home"); setDifficulty(null); setFormation(null); setSlots([]); setSpinning(false);
     setSpinDisp(null); setLandedSquad(null); setRerollsLeft(0); setUsedMap({}); setOpenPlayer(null);
-    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false); setIsNewPB(false); setShowMyStats(false);
+    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false); setIsNewPB(false); setShowMyStats(false); setEraFilter('all'); setExpertMode(false); setSummaryText(''); setMatchEvents({}); setLiveEvents([]); setActiveMatchIdx(-1);
     // reset h2h
     setH2hMode(false); setH2hTurn(1); setH2hSlots1([]); setH2hSlots2([]);
     setH2hName1(""); setH2hName2(""); setH2hUsed1(new Set()); setH2hUsed2(new Set());
@@ -1362,15 +1463,16 @@ export default function App() {
           <div className="fp-sub">How many rerolls do you get if you don't like the country you land on?</div>
           <div className="fp-grid" style={{maxWidth:600,margin:"0 auto"}}>
             {[
-              {key:"easy",   label:"Easy",   sub:"3 Rerolls",  desc:"Reroll up to 3 times per spin",        icon:"😌"},
-              {key:"medium", label:"Medium", sub:"1 Reroll",   desc:"One chance to avoid a bad squad",      icon:"😤"},
-              {key:"hard",   label:"Hard",   sub:"No Rerolls", desc:"You get what you spin. No mercy.",     icon:"💀"},
+              {key:"easy",   label:"Easy",   sub:"3 Rerolls",  desc:"Reroll up to 3 times per spin",           icon:"😌"},
+              {key:"medium", label:"Medium", sub:"1 Reroll",   desc:"One chance to avoid a bad squad",         icon:"😤"},
+              {key:"hard",   label:"Hard",   sub:"No Rerolls", desc:"You get what you spin. No mercy.",        icon:"💀"},
+              {key:"expert", label:"Expert", sub:"No Rerolls", desc:"Ratings hidden — draft on knowledge alone", icon:"🧠"},
             ].map(d => (
               <div
                 className="fp-card diff-card"
                 key={d.key}
-                onClick={() => { setDifficulty(d.key); setPhase("formation"); }}
-                style={{minWidth:160}}
+                onClick={() => { setDifficulty(d.key); setExpertMode(d.key==="expert"); setPhase("formation"); }}
+                style={{minWidth:140}}
               >
                 <div style={{fontSize:"2rem",marginBottom:8}}>{d.icon}</div>
                 <div className="fp-label">{d.label}</div>
@@ -1378,6 +1480,31 @@ export default function App() {
                 <div className="fp-sub2" style={{marginTop:6,letterSpacing:.5,textTransform:"none",fontSize:".72rem",lineHeight:1.4}}>{d.desc}</div>
               </div>
             ))}
+          </div>
+
+          {/* Era Filter */}
+          <div style={{maxWidth:600,margin:"20px auto 0"}}>
+            <div style={{fontSize:".7rem",color:"var(--muted)",letterSpacing:2,textTransform:"uppercase",marginBottom:10,textAlign:"center"}}>Era Filter</div>
+            <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+              {[
+                {key:"all",     label:"All Eras",    sub:"1966–2026"},
+                {key:"classic", label:"Classic",     sub:"1966–1990"},
+                {key:"golden",  label:"Golden Era",  sub:"1994–2006"},
+                {key:"modern",  label:"Modern",      sub:"2010–2026"},
+              ].map(e => (
+                <div
+                  key={e.key}
+                  className="fp-card"
+                  style={{padding:"10px 16px",textAlign:"center",minWidth:110,borderColor:eraFilter===e.key?"var(--gold)":"var(--bdr)",background:eraFilter===e.key?"var(--surf3)":"var(--surf)"}}
+                  onClick={() => setEraFilter(e.key)}
+                >
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1rem",color:eraFilter===e.key?"var(--gold)":"var(--txt)"}}>{e.label}</div>
+                  <div style={{fontSize:".62rem",color:"var(--muted)",marginTop:2}}>{e.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{display:"none"}}>
           </div>
         </div>
       )}
@@ -1510,7 +1637,7 @@ export default function App() {
                             onClick={() => !isUsed && fits && togglePlayer(p, landedSquad)}
                           >
                             <div className="pr-main">
-                              <div className="pr-rat">{p.rat}</div>
+                              <div className="pr-rat">{expertMode ? '?' : p.rat}</div>
                               <div className="pr-info">
                                 <div className="pr-name">{p.name}</div>
                                 <div className="pr-pos">{p.pos}</div>
@@ -1791,20 +1918,34 @@ export default function App() {
               const revealed = simStep > i;
               const active   = simStep === i;
               return (
-                <div key={i} className={`mr sim-row${revealed?" revealed":""}${active?" active":""}`}>
-                  <div className="mr-t" style={{fontWeight:700}}>Your XI</div>
-                  {revealed ? (
-                    <>
-                      <div className={`mr-s ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.ga}–{g.gb}</div>
-                      <div className="mr-t" style={{textAlign:"right"}}>{g.opp.flag} {g.opp.key}</div>
-                      <span className={`mr-b ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.out}</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="mr-s pending">vs</div>
-                      <div className="mr-t" style={{textAlign:"right",color:"var(--muted)"}}>{g.opp.flag} {g.opp.key}</div>
-                      <span className="mr-b pending" style={{minWidth:28}}>{active ? <span className="dot-pulse"><i/><i/><i/></span> : ""}</span>
-                    </>
+                <div key={i}>
+                  <div className={`mr sim-row${revealed?" revealed":""}${active?" active":""}`}>
+                    <div className="mr-t" style={{fontWeight:700}}>Your XI</div>
+                    {revealed ? (
+                      <>
+                        <div className={`mr-s ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.ga}–{g.gb}</div>
+                        <div className="mr-t" style={{textAlign:"right"}}>{g.opp.flag} {g.opp.key}</div>
+                        <span className={`mr-b ${g.out}`} style={{animation:"popIn .3s ease"}}>{g.out}</span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mr-s pending">vs</div>
+                        <div className="mr-t" style={{textAlign:"right",color:"var(--muted)"}}>{g.opp.flag} {g.opp.key}</div>
+                        <span className="mr-b pending" style={{minWidth:28}}>{active ? <span className="dot-pulse"><i/><i/><i/></span> : ""}</span>
+                      </>
+                    )}
+                  </div>
+                  {liveEvents.length > 0 && activeMatchIdx === i && (
+                    <div className="commentary-wrap">
+                      {liveEvents.map((evt,ei) => (
+                        <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:"fadeSlideIn .25s ease"}}>
+                          <span className="comm-min">{evt.min}&apos;</span>
+                          <span className="comm-icon">⚽</span>
+                          <span className="comm-name">{evt.type==="goal" ? evt.name.split(" ").slice(-1)[0] : evt.name}</span>
+                          {evt.type==="opp_goal" && <span style={{fontSize:".6rem",color:"var(--muted)",marginLeft:4}}>(opp)</span>}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               );
@@ -1851,6 +1992,18 @@ export default function App() {
                         </>
                       )}
                     </div>
+                    {liveEvents.length > 0 && activeMatchIdx === (3+i) && (
+                      <div className="commentary-wrap">
+                        {liveEvents.map((evt,ei) => (
+                          <div key={ei} className={`commentary-evt${evt.type==="opp_goal"?" opp":""}`} style={{animation:"fadeSlideIn .25s ease"}}>
+                            <span className="comm-min">{evt.min}&apos;</span>
+                            <span className="comm-icon">⚽</span>
+                            <span className="comm-name">{evt.type==="goal" ? evt.name.split(" ").slice(-1)[0] : evt.name}</span>
+                            {evt.type==="opp_goal" && <span style={{fontSize:".6rem",color:"var(--muted)",marginLeft:4}}>(opp)</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {revealed && r.pens && <div className="mr-pens" style={{animation:"fadeSlideIn .3s ease"}}>{r.pens}</div>}
                   </div>
                 );
@@ -2000,6 +2153,18 @@ export default function App() {
             </div>
           )}
 
+          {/* AI Season Summary */}
+          {(summaryLoading || summaryText) && simStep >= simMatches.length && (
+            <div className="rcard" style={{marginTop:14,animation:"fadeSlideIn .5s ease"}}>
+              <div className="rch">📰 Tournament Summary</div>
+              <div style={{padding:"14px 16px",fontSize:".88rem",lineHeight:1.7,color:"var(--txt2)",fontStyle:"italic"}}>
+                {summaryLoading
+                  ? <div style={{display:"flex",alignItems:"center",gap:8,color:"var(--muted)"}}><span className="dot-pulse"><i/><i/><i/></span> Writing summary…</div>
+                  : summaryText}
+              </div>
+            </div>
+          )}
+
           <div style={{textAlign:"center",marginTop:16}}>
             <button className="btn-primary" onClick={restart}>Play Again →</button>
           </div>
@@ -2131,7 +2296,7 @@ function Pitch({ fSlots, slots, openPlayer, onPlace }) {
             onClick={isElig ? () => onPlace(slot) : undefined}
           >
             <div className={`badge ${badgeCls}`}>
-              {filled ? filled.player.rat : slot.label}
+              {filled ? (expertMode ? filled.player.pos : filled.player.rat) : slot.label}
             </div>
             {filled ? (
               <>
