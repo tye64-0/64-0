@@ -388,14 +388,48 @@ function generateEvents(myPlayers, ga, gb, oppKey) {
   return events.sort((a,b)=>a.min-b.min);
 }
 
+// Sort all squads by their average rating
+function getSquadsByTier(sq) {
+  const rated = sq.map(k => ({ key:k, flag:SQUADS[k].flag, r:avgRat(SQUADS[k].players) }));
+  rated.sort((a,b) => a.r - b.r);
+  const n = rated.length;
+  // Split into 3 tiers by rating
+  return {
+    weak:   rated.slice(0, Math.floor(n*0.35)),           // bottom 35% — group stage fodder
+    mid:    rated.slice(Math.floor(n*0.35), Math.floor(n*0.70)), // mid 35% — R16/QF
+    strong: rated.slice(Math.floor(n*0.70)),               // top 30% — SF/Final
+  };
+}
+
+function pickRandom(arr, n) {
+  return [...arr].sort(()=>Math.random()-.5).slice(0,n);
+}
+
 function simulate(myPlayers, availSquads) {
   const sq = availSquads || SQUAD_KEYS;
   const myR = avgRat(myPlayers);
-  const opp7 = [...sq].sort(()=>Math.random()-.5).slice(0,7).map(k=>({key:k,flag:SQUADS[k].flag,r:avgRat(SQUADS[k].players)}));
-  const playerStats = {};
-  const allEvents = {}; // matchIdx → events array
+  const tiers = getSquadsByTier(sq);
 
-  const group = opp7.slice(0,3).map((opp,i)=>{
+  // Group stage: draw from weak/mid mix — should be beatable
+  const groupOpps = pickRandom([...tiers.weak, ...tiers.mid], 3)
+    .map(o => ({key:o.key, flag:o.flag, r:o.r}));
+
+  // Knockout opponents scale up each round:
+  // R16: mid tier, QF: mid/strong mix, SF: strong, Final: elite (top 15%)
+  const elite = sq.map(k=>({key:k,flag:SQUADS[k].flag,r:avgRat(SQUADS[k].players)}))
+    .sort((a,b)=>b.r-a.r).slice(0, Math.max(1, Math.floor(sq.length*0.15)));
+
+  const r16Opp  = pickRandom(tiers.mid, 1)[0] || pickRandom(tiers.weak,1)[0];
+  const qfOpp   = pickRandom([...tiers.mid, ...tiers.strong], 1)[0];
+  const sfOpp   = pickRandom(tiers.strong, 1)[0];
+  const finOpp  = pickRandom(elite.length ? elite : tiers.strong, 1)[0];
+
+  const knockoutOpps = [r16Opp, qfOpp, sfOpp, finOpp].filter(Boolean);
+
+  const playerStats = {};
+  const allEvents = {};
+
+  const group = groupOpps.map((opp,i)=>{
     const {ga,gb}=simMatch(myR,opp.r);
     distributeStats(myPlayers, ga, gb, playerStats);
     allEvents[i] = generateEvents(myPlayers, ga, gb, opp.key);
@@ -409,7 +443,7 @@ function simulate(myPlayers, availSquads) {
 
   const stages=["Round of 16","Quarter-Final","Semi-Final","Final"]; const rounds=[];
   for(let i=0;i<4;i++){
-    const opp=opp7[3+i]; const {ga,gb}=simMatch(myR,opp.r);
+    const opp=knockoutOpps[i]; if(!opp) break; const {ga,gb}=simMatch(myR,opp.r);
     let won=ga>gb; let pens=null;
     if(ga===gb){won=Math.random()>.48;pens=won?"Won on penalties":"Lost on penalties";}
     distributeStats(myPlayers, ga, gb, playerStats);
@@ -1501,6 +1535,27 @@ export default function App() {
                 {Object.keys(FORMATIONS).map(f=>(
                   <div key={f} className="fp-card" style={{flex:1,minWidth:80,padding:"10px 6px",textAlign:"center",borderColor:formation===f?"var(--gold)":"var(--bdr)",background:formation===f?"var(--surf3)":"var(--surf)"}} onClick={()=>setFormation(f)}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:formation===f?"var(--gold)":"var(--txt)"}}>{f}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{fontSize:".7rem",color:"var(--muted)",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Era Filter</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[
+                  {key:"all",     label:"All Eras",   sub:"1966–2026"},
+                  {key:"classic", label:"Classic",    sub:"1966–1990"},
+                  {key:"golden",  label:"Golden Era", sub:"1994–2006"},
+                  {key:"modern",  label:"Modern",     sub:"2010–2026"},
+                ].map(e => (
+                  <div
+                    key={e.key}
+                    className="fp-card"
+                    style={{flex:1,minWidth:80,padding:"8px 6px",textAlign:"center",borderColor:eraFilter===e.key?"var(--gold)":"var(--bdr)",background:eraFilter===e.key?"var(--surf3)":"var(--surf)"}}
+                    onClick={() => setEraFilter(e.key)}
+                  >
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:".9rem",color:eraFilter===e.key?"var(--gold)":"var(--txt)"}}>{e.label}</div>
+                    <div style={{fontSize:".55rem",color:"var(--muted)",marginTop:2}}>{e.sub}</div>
                   </div>
                 ))}
               </div>
