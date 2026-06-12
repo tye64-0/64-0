@@ -800,6 +800,12 @@ export default function App() {
   const [shareCopied, setShareCopied] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [personalBests, setPersonalBests] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("64-0-pb") || "null") || { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
+    catch(e) { return { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] }; }
+  });
+  const [isNewPB, setIsNewPB] = useState(false);
+  const [showMyStats, setShowMyStats] = useState(false);
 
   // ── HEAD TO HEAD STATE ──
   const [h2hMode, setH2hMode] = useState(false);          // are we in h2h mode?
@@ -1021,12 +1027,37 @@ export default function App() {
         setLeaderboard(board);
         setScoreSubmitted(true);
       } catch(e) {}
+
+      // Save personal best to localStorage
+      try {
+        const rank = resultRank(full);
+        const rat  = myPlayers.length ? Math.round(avgRat(myPlayers)) : 0;
+        const prev = JSON.parse(localStorage.getItem("64-0-pb") || "null") || { best:0, bestStage:"", bestRat:0, runs:0, wins:0, history:[] };
+        const newPB = rank > prev.best || (rank === prev.best && rat > prev.bestRat);
+        const updated = {
+          best:      newPB ? rank : prev.best,
+          bestStage: newPB ? resultLabel(full) : prev.bestStage,
+          bestRat:   newPB ? rat : prev.bestRat,
+          runs:      (prev.runs || 0) + 1,
+          wins:      (prev.wins || 0) + (full.champion ? 1 : 0),
+          history:   [{
+            stage: resultLabel(full),
+            rat, formation, difficulty,
+            name: teamName || "Unnamed",
+            champion: !!full.champion,
+            ts: Date.now(),
+          }, ...(prev.history || [])].slice(0, 10),
+        };
+        localStorage.setItem("64-0-pb", JSON.stringify(updated));
+        setPersonalBests(updated);
+        if (newPB) setIsNewPB(true);
+      } catch(e) {}
     }, totalDelay);
   }
   function restart() {
     setPhase("home"); setDifficulty(null); setFormation(null); setSlots([]); setSpinning(false);
     setSpinDisp(null); setLandedSquad(null); setRerollsLeft(0); setUsedMap({}); setOpenPlayer(null);
-    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false);
+    setFilter("ALL"); setResults(null); setSimFull(null); setSimMatches([]); setSimStep(0); setUsedPlayers(new Set()); setTeamName(""); setScoreSubmitted(false); setShareCardVisible(false); setShowLeaderboard(false); setIsNewPB(false); setShowMyStats(false);
     // reset h2h
     setH2hMode(false); setH2hTurn(1); setH2hSlots1([]); setH2hSlots2([]);
     setH2hName1(""); setH2hName2(""); setH2hUsed1(new Set()); setH2hUsed2(new Set());
@@ -1138,7 +1169,14 @@ export default function App() {
           <div className="eye">World Cup Draft Game</div>
           <h1 className="hero-title">64<span>-0</span></h1>
           <p className="hero-desc">Spin the reel. Draft legends from every World Cup era. Build your ultimate XI and simulate the tournament.</p>
-          <button className="btn-primary" onClick={() => setPhase("difficulty")}>Start New Run →</button>
+          {personalBests.runs > 0 && (
+            <div style={{marginTop:18,padding:"10px 18px",background:"var(--surf)",border:"1px solid var(--gdim)",borderRadius:6,display:"inline-block",fontSize:".8rem",color:"var(--txt2)"}}>
+              Your best: <strong style={{color:"var(--gold)"}}>{personalBests.bestStage.replace(/[🏆🥈🥉⚽⚠️❌]\s*/,"")}</strong>
+              <span style={{color:"var(--muted)",marginLeft:6}}>· {personalBests.runs} run{personalBests.runs!==1?"s":""} · {personalBests.wins} win{personalBests.wins!==1?"s":""}</span>
+              <span style={{color:"var(--muted)",marginLeft:6}}>— can you do better?</span>
+            </div>
+          )}
+          <button className="btn-primary" onClick={() => setPhase("difficulty")} style={{marginTop:16}}>Start New Run →</button>
           <div style={{marginTop:14,display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
             <button className="btn-ghost" onClick={() => { setH2hName1(""); setH2hName2(""); setDifficulty(null); setFormation(null); setPhase("h2h-setup"); }}>
               ⚔️ Head to Head
@@ -1146,12 +1184,82 @@ export default function App() {
             <button className="btn-ghost" onClick={() => { loadLeaderboard(); setShowLeaderboard(true); setPhase("leaderboard"); }}>
               🏆 Leaderboard
             </button>
+            {personalBests.runs > 0 && (
+              <button className="btn-ghost" onClick={() => setPhase("mystats")}>
+                📈 My Stats
+              </button>
+            )}
           </div>
           <div className="hero-stats">
             <div><div className="hs-n">{SQUAD_KEYS.length}</div><div className="hs-l">Squads</div></div>
             <div><div className="hs-n">880+</div><div className="hs-l">Players</div></div>
             <div><div className="hs-n">1966–2026</div><div className="hs-l">Eras</div></div>
             <div><div className="hs-n">5</div><div className="hs-l">Formations</div></div>
+          </div>
+        </div>
+      )}
+
+      {/* MY STATS */}
+      {phase === "mystats" && (
+        <div className="fp" style={{maxWidth:540,margin:"0 auto"}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+            <button className="btn-ghost" onClick={() => setPhase("home")}>← Back</button>
+            <div className="fp-title" style={{margin:0}}>📈 My Stats</div>
+          </div>
+
+          {/* Summary cards */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {label:"Runs Played", val:personalBests.runs},
+              {label:"Tournaments Won", val:personalBests.wins},
+              {label:"Win Rate", val:`${personalBests.runs>0?Math.round((personalBests.wins/personalBests.runs)*100):0}%`},
+            ].map((s,i) => (
+              <div key={i} style={{background:"var(--surf)",border:"1px solid var(--bdr)",borderRadius:8,padding:"14px 10px",textAlign:"center"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"var(--gold)"}}>{s.val}</div>
+                <div style={{fontSize:".6rem",color:"var(--muted)",letterSpacing:1,textTransform:"uppercase",marginTop:3}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Personal best */}
+          <div className="rcard" style={{marginBottom:14}}>
+            <div className="rch">🏅 Personal Best</div>
+            <div style={{padding:"16px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"var(--gold)"}}>{personalBests.bestStage || "–"}</div>
+                <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:2}}>Best tournament result</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"var(--gold)"}}>{personalBests.bestRat}</div>
+                <div style={{fontSize:".7rem",color:"var(--muted)",marginTop:2}}>Best team rating</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Run history */}
+          {personalBests.history.length > 0 && (
+            <div className="rcard">
+              <div className="rch">Recent Runs</div>
+              {personalBests.history.map((h,i) => (
+                <div key={i} className="mr" style={{padding:"10px 14px"}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:".84rem",fontWeight:600,color:h.champion?"var(--gold)":"var(--txt)"}}>{h.name}</div>
+                    <div style={{fontSize:".65rem",color:"var(--muted)",marginTop:1}}>{h.formation} · {h.difficulty}</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:".82rem",fontWeight:700,color:h.champion?"var(--gold)":resultRank({champion:h.champion,elim:h.stage.replace(/[^a-zA-Z\s-]/g,"").trim()})>=5?"var(--grn)":"var(--txt2)"}}>{h.stage.replace(/[🏆🥈🥉⚽⚠️❌]\s*/,"")}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:".95rem",color:"var(--gold)"}}>{h.rat}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{textAlign:"center",marginTop:20}}>
+            <button className="btn-ghost" style={{color:"var(--red)",borderColor:"rgba(242,107,107,.3)"}}
+              onClick={() => { if(window.confirm("Reset all your stats? This cannot be undone.")) { localStorage.removeItem("64-0-pb"); setPersonalBests({best:0,bestStage:"",bestRat:0,runs:0,wins:0,history:[]}); setPhase("home"); }}}>
+              Reset My Stats
+            </button>
           </div>
         </div>
       )}
@@ -1660,6 +1768,12 @@ export default function App() {
               </div>
             );
           })()}
+          {isNewPB && simStep >= simMatches.length && (
+            <div style={{padding:"10px 14px",marginBottom:8,background:"linear-gradient(135deg,rgba(61,214,140,.12),rgba(61,214,140,.04))",border:"1px solid rgba(61,214,140,.3)",borderRadius:6,textAlign:"center",animation:"fadeSlideIn .5s ease"}}>
+              <span style={{fontSize:"1.1rem"}}>🎉</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1rem",color:"var(--grn)",marginLeft:8,letterSpacing:1}}>NEW PERSONAL BEST!</span>
+            </div>
+          )}
           <div className="res-stage-name">{teamName || "Your XI"}</div>
           <div className="res-sub">
             Team Rating: {teamRat} · {formation} · {difficulty}
